@@ -7,6 +7,13 @@
 
 (defmulti table (fn [{:keys [dbtype]}] dbtype))
 
+(defn parse-column-constraints-postgres
+  [constraints]
+  (cond-> {}
+    (seq (filter #(= "PRIMARY KEY" (:table_constraints/constraint_type %)) constraints))
+    (assoc :primary-key? true)
+    ))
+
 (defmethod table
   :postgres
   [{:keys [connection table-record]}]
@@ -43,8 +50,8 @@
 
     {:columns (reduce (fn [m {:keys [column_name] :as column-record}]
                         (let [col-constraints (get constraints column_name)]
-                          (assoc m (keyword column_name) {:type (keyword (:data_type column-record))
-                                                          :constraints col-constraints})))
+                          (assoc m (keyword column_name) (merge {:type (keyword (:data_type column-record))}
+                                                                (parse-column-constraints-postgres col-constraints)))))
                       {}
                       column-records)}))
 
