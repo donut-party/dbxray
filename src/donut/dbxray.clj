@@ -5,14 +5,19 @@
 
 (def sql-opts {:builder-fn result-set/as-unqualified-maps})
 
+(defn assoc-some
+  [m k v]
+  (cond-> m
+    v (assoc k v)))
+
 (defmulti table (fn [{:keys [dbtype]}] dbtype))
 
 (defn parse-column-constraints-postgres
   [constraints]
-  (cond-> {}
-    (seq (filter #(= "PRIMARY KEY" (:table_constraints/constraint_type %)) constraints))
-    (assoc :primary-key? true)
-    ))
+  {:primary-key? (->> constraints
+                      (filter #(= "PRIMARY KEY" (:table_constraints/constraint_type %)))
+                      seq
+                      boolean)})
 
 (defmethod table
   :postgres
@@ -50,7 +55,8 @@
 
     {:columns (reduce (fn [m {:keys [column_name] :as column-record}]
                         (let [col-constraints (get constraints column_name)]
-                          (assoc m (keyword column_name) (merge {:type (keyword (:data_type column-record))}
+                          (assoc m (keyword column_name) (merge {:type      (keyword (:data_type column-record))
+                                                                 :not-null? (= "NO" (:is_nullable column-record))}
                                                                 (parse-column-constraints-postgres col-constraints)))))
                       {}
                       column-records)}))
