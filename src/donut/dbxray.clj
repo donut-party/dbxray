@@ -1,76 +1,74 @@
 (ns donut.dbxray
   (:require
-   [next.jdbc.result-set :as result-set]
-   [next.jdbc.sql :as sql]))
+   [clojure.core.protocols :as p]
+   [clojure.datafy :as df]
+   [clojure.string :as str]
+   [next.jdbc :as jdbc]
+   [next.jdbc.datafy :as njdf]))
 
-(def sql-opts {:builder-fn result-set/as-unqualified-maps})
+(defmulti schema-pattern :dbtype)
 
-(defn assoc-some
-  [m k v]
-  (cond-> m
-    v (assoc k v)))
+(defmethod schema-pattern :postgresql
+  [_]
+  "public")
 
-(defmulti table (fn [{:keys [dbtype]}] dbtype))
+(defn prep
+  [db-spec]
+  (let [metadata (-> db-spec jdbc/get-connection .getMetaData)]
+    {:metadata metadata
+     :dbtype   (-> metadata
+                   .getDatabaseProductName
+                   str/lower-case
+                   keyword)}))
 
-(defn parse-column-constraints-postgres
-  [constraints]
-  {:primary-key? (->> constraints
-                      (filter #(= "PRIMARY KEY" (:table_constraints/constraint_type %)))
-                      seq
-                      boolean)})
+(defn xray
+  [db-spec]
+  (prep db-spec))
 
-(defmethod table
-  :postgres
-  [{:keys [connection table-record]}]
-  (let [column-records (sql/query connection
-                                  ["SELECT * FROM information_schema.columns
-                                    WHERE table_name = ?
-                                      AND table_catalog = ?
-                                      AND table_schema = ?"
-                                   (:table_name table-record)
-                                   (:table_catalog table-record)
-                                   (:table_schema table-record)]
-                                  sql-opts)
-        constraints    (->> (sql/query connection
-                                       ["SELECT
-                                           tc.table_schema,
-                                           tc.constraint_name,
-                                           tc.table_name,
-                                           tc.constraint_type,
-                                           kcu.column_name,
-                                           ccu.table_schema AS foreign_table_schema,
-                                           ccu.table_name AS foreign_table_name,
-                                           ccu.column_name AS foreign_column_name
-                                         FROM
-                                           information_schema.table_constraints AS tc
-                                           JOIN information_schema.key_column_usage AS kcu
-                                             ON tc.constraint_name = kcu.constraint_name
-                                             AND tc.table_schema = kcu.table_schema
-                                           JOIN information_schema.constraint_column_usage AS ccu
-                                             ON ccu.constraint_name = tc.constraint_name
-                                             AND ccu.table_schema = tc.table_schema
-                                         WHERE tc.table_name = ?"
-                                        (:table_name table-record)])
-                            (group-by :key_column_usage/column_name))]
+(defn get-tables
+  [{:keys [metadata] :as opts}]
+  (binding [njdf/*datafy-failure* :omit]
+    (-> metadata
+        (.getTables nil (schema-pattern opts) nil (into-array ["TABLE"]))
+        df/datafy)))
 
-    {:columns (reduce (fn [m {:keys [column_name] :as column-record}]
-                        (let [col-constraints (get constraints column_name)]
-                          (assoc m (keyword column_name) (merge {:type      (keyword (:data_type column-record))
-                                                                 :not-null? (= "NO" (:is_nullable column-record))}
-                                                                (parse-column-constraints-postgres col-constraints)))))
-                      {}
-                      column-records)}))
+(defn get-columns
+  [{:keys [metadata] :as opts}]
+  (binding [njdf/*datafy-failure* :omit]
+    (-> metadata
+        (.getColumns nil (schema-pattern opts) nil nil)
+        df/datafy)))
 
-(defmulti tables (fn [{:keys [dbtype]}] dbtype))
+(defmacro explore
+  [[binding db-spec] & body]
+  `(binding [njdf/*datafy-failure* :omit]
+     (let [~binding (-> ~db-spec
+                        (prep)
+                        :metadata)]
+       ~@body)))
 
-(defmethod tables
-  :postgres
-  [{:keys [connection] :as opts}]
-  (let [table-records (sql/query connection
-                                 ["SELECT table_name, table_catalog, table_schema
-                                   FROM information_schema.tables WHERE table_schema='public'"]
-                                 sql-opts)]
-    (->> table-records
-         (reduce (fn [m table-record]
-                   (assoc m (-> table-record :table_name keyword) (table (assoc opts :table-record table-record))))
-                 {}))))
+(comment
+  (require '[next.jdbc.datafy :as nj-datafy])
+  (require '[next.jdbc.result-set :as rs])
+  (extend-protocol p/Datafiable
+    org.sqlite.jdbc4.JDBC4ResultSet
+    (datafy [this]
+      (if (instance? java.sql.ResultSetMetaData this)
+        (#'next.jdbc.datafy/datafy-result-set-meta-data this)
+        (let [s (.getStatement this)
+              c (when s (.getConnection s))]
+          (cond-> (#'next.jdbc.datafy/safe-bean this {})
+            c (assoc :rows (rs/datafiable-result-set this c {})))))))
+
+  (with-open [conn (jdbc/get-connection {:dbtype "sqlite" :dbname "sqlite.db"})]
+    (clojure.datafy/nav (clojure.datafy/datafy (.getMetaData conn)) :schemas nil))
+
+  (with-open [conn (jdbc/get-connection {:dbtype "sqlite" :dbname "sqlite.db"})]
+    (->
+     (.getMetaData conn)
+     (.getTables nil nil nil nil)
+     clojure.datafy/datafy
+     ))
+
+  (dbx/explore [md pg-conn]
+               (df/datafy (.getImportedKeys md nil nil "todos"))))
