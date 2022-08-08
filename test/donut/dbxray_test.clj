@@ -6,7 +6,7 @@
   (:import
    (io.zonky.test.db.postgres.embedded EmbeddedPostgres)))
 
-(def test-dbspec (atom nil))
+(def test-dbconn (atom nil))
 (defonce embedded-pg (future (EmbeddedPostgres/start)))
 
 (def ^:private test-postgres {:dbtype "embedded-postgres" :dbname "clojure_test"})
@@ -20,7 +20,7 @@
 
 (defn create-tables
   [conn]
-  (doseq [table-name ["users" "todo_lists" "todos"]]
+  (doseq [table-name ["todos" "todo_lists" "users"]]
     (try
       (jdbc/execute! conn [(str "DROP TABLE " table-name)])
       (catch Exception _)))
@@ -58,51 +58,52 @@
   [t]
   (doseq [db test-dbspecs]
     (if (= "embedded-postgres" (:dbtype db))
-      (reset! test-dbspec
-              (.getPostgresDatabase ^EmbeddedPostgres @embedded-pg))
-      (reset! test-dbspec db))
-    (create-tables @test-dbspec)
-    (t)))
+      (reset! test-dbconn (jdbc/get-connection (.getPostgresDatabase ^EmbeddedPostgres @embedded-pg)))
+      (reset! test-dbconn (jdbc/get-connection db)))
+    (try
+      (create-tables @test-dbconn)
+      (t)
+      (finally (.close @test-dbconn)))))
 
 (use-fixtures :each with-test-db)
 
 (deftest returns-tables
   (is (= {:users      {:columns {:id       {:type         :integer
-                                            :not-null?    true
+                                            :nullable?    true
                                             :primary-key? true}
                                  :username {:type         :text
-                                            :not-null?    true
+                                            :nullable?    false
                                             :primary-key? false}}}
           :todos      {:columns {:id            {:type         :integer
-                                                 :not-null?    true
+                                                 :nullable?    true
                                                  :primary-key? true}
                                  :todo_list_id  {:type         :integer
-                                                 :not-null?    false
+                                                 :nullable?    true
                                                  :primary-key? false}
                                  :todo_title    {:type         :text
-                                                 :not-null?    true
+                                                 :nullable?    false
                                                  :primary-key? false}
                                  :created_by_id {:type         :integer
-                                                 :not-null?    false
+                                                 :nullable?    true
                                                  :primary-key? false}
                                  :updated_by_id {:type         :integer
-                                                 :not-null?    false
+                                                 :nullable?    true
                                                  :primary-key? false}}}
           :todo_lists {:columns {:id            {:type         :integer
                                                  :primary-key? true
-                                                 :not-null?    true}
+                                                 :nullable?    false}
                                  :created_by_id {:type         :integer
-                                                 :not-null?    false
+                                                 :nullable?    true
                                                  :primary-key? false}
                                  :updated_by_id {:type         :integer
-                                                 :not-null?    false
+                                                 :nullable?    true
                                                  :primary-key? false}}}}
-         #_(dbxray/tables {:dbtype     :postgres
-                           :connection @test-dbspec}))))
+         (dbx/xray @test-dbconn))))
 
 (comment
   (do
     (require '[clojure.datafy :as df])
+    (require '[next.jdbc.result-set :as njrs])
     (def epg-conn (jdbc/get-connection (.getPostgresDatabase ^EmbeddedPostgres @embedded-pg)))
     (create-tables epg-conn)
     (def pg-conn (jdbc/get-connection {:dbtype "postgresql" :dbname "daniel" :user "daniel" :password ""}))

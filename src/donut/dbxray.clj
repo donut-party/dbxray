@@ -25,10 +25,6 @@
                    str/lower-case
                    keyword)}))
 
-(defn xray
-  [db-spec]
-  (prep db-spec))
-
 (defn datafy-result-set
   [rs]
   (-> rs
@@ -36,25 +32,57 @@
       df/datafy))
 
 (defn get-tables
-  [{:keys [metadata] :as opts}]
+  [{:keys [metadata] :as dbmd}]
   (binding [njdf/*datafy-failure* :omit]
     (-> metadata
-        (.getTables nil (schema-pattern opts) nil (into-array ["TABLE"]))
+        (.getTables nil (schema-pattern dbmd) nil (into-array ["TABLE"]))
         datafy-result-set)))
 
 (defn get-columns
-  [{:keys [metadata] :as opts}]
+  [{:keys [metadata] :as dmbd}]
   (binding [njdf/*datafy-failure* :omit]
     (-> metadata
-        (.getColumns nil (schema-pattern opts) nil nil)
+        (.getColumns nil (schema-pattern dmbd) nil nil)
         datafy-result-set)))
 
 (defn get-foreign-keys
-  [{:keys [metadata] :as opts}]
+  [{:keys [metadata] :as dbmd} table-name]
   (binding [njdf/*datafy-failure* :omit]
     (-> metadata
-        (.getImportedKeys nil (schema-pattern opts) "*")
+        (.getImportedKeys nil (schema-pattern dbmd) table-name)
         datafy-result-set)))
+
+(defn get-primary-keys
+  [{:keys [metadata] :as dbmd} table-name]
+  (binding [njdf/*datafy-failure* :omit]
+    (-> metadata
+        (.getPrimaryKeys nil (schema-pattern dbmd) table-name)
+        datafy-result-set)))
+
+(defn build-columns
+  [dbmd table-name table-cols]
+  (let [fks (group-by :fkcolumn_name (get-foreign-keys dbmd table-name))
+        pks (group-by :column_name (get-primary-keys dbmd table-name))]
+    (reduce (fn [cols-map {:keys [column_name is_nullable type_name] :as col}]
+              (assoc cols-map (keyword column_name) {:type         (-> type_name str/lower-case keyword)
+                                                     :nullable?    (= "YES" is_nullable)
+                                                     :primary-key? (boolean (get pks column_name))}))
+            {}
+            table-cols)))
+
+(defn xray
+  [conn]
+  (let [dbmd    (prep conn)
+        tables  (get-tables dbmd)
+        columns (group-by :table_name (get-columns dbmd))]
+    (reduce (fn [xr {:keys [table_name]}]
+              (let [table-cols (get columns table_name)]
+                (assoc xr (keyword table_name) {:columns (build-columns dbmd table_name table-cols)})))
+            {}
+            tables)))
+
+
+
 
 (defmacro explore
   [[binding db-spec] & body]
@@ -75,5 +103,4 @@
      clojure.datafy/datafy
      ))
 
-  (dbx/explore [md pg-conn]
-               (df/datafy (.getImportedKeys md nil nil "todos"))))
+  )
