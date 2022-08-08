@@ -5,8 +5,6 @@
 .cpcache
 .lein*
 .nrepl*
-cljs-test-runner-out
-node_modules
-scratch.cljc
+sqlite.db
 target
 tmp

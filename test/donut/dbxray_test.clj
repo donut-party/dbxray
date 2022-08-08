@@ -47,7 +47,7 @@
        todo_list_id INTEGER,
        todo_title text NOT NULL,
        created_by_id INTEGER,
-       updated_by_id INTEGER
+       updated_by_id INTEGER,
        CONSTRAINT fk_todo_list
          FOREIGN KEY(todo_list_id)
            REFERENCES todo_lists(id)
@@ -101,41 +101,18 @@
                            :connection @test-dbspec}))))
 
 (comment
-  (require '[next.jdbc.sql :as sql])
-  (require '[clojure.datafy :as df])
-  (def pg-conn (.getPostgresDatabase ^EmbeddedPostgres @embedded-pg))
-  (create-tables pg-conn)
+  (do
+    (require '[clojure.datafy :as df])
+    (def epg-conn (jdbc/get-connection (.getPostgresDatabase ^EmbeddedPostgres @embedded-pg)))
+    (create-tables epg-conn)
+    (def pg-conn (jdbc/get-connection {:dbtype "postgresql" :dbname "daniel" :user "daniel" :password ""}))
+    (def sl-conn (jdbc/get-connection {:dbtype "sqlite" :dbname "sqlite.db"}))
+    )
 
-
-
-  (-> pg-conn
-      jdbc/get-connection
-      .getMetaData
-      (.getTables nil nil "users" nil)
-      clojure.data/datafy
-      )
-
-  ;; pg all public tables, includes indexes
-  (-> pg-conn
-      jdbc/get-connection
-      .getMetaData
-      (.getTables nil "public" nil nil)
-      clojure.data/datafy
-      )
-
-  ;; columns
-  (-> pg-conn
-      jdbc/get-connection
-      .getMetaData
-      (.getColumns nil "public" nil nil)
-      clojure.data/datafy
-      :rows
-      )
-
-  (with-open [conn (jdbc/get-connection test-sqlite-mem)]
+  (with-open [conn (jdbc/get-connection {:dbtype "sqlite" :dbname "sqlite.db"})]
     (create-tables conn)
-    (-> conn
-        .getMetaData
-        (.getTables nil nil nil nil)
-        clojure.datafy/datafy))
+    (dbx/get-foreign-keys (dbx/prep conn)))
+
+  (dbx/explore [md pg-conn]
+               (df/datafy (.getImportedKeys md nil nil "todos")))
   )
