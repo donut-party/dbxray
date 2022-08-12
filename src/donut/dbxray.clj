@@ -27,14 +27,19 @@
   [_ col-type]
   col-type)
 
+(defn database-product-name
+  [metadata]
+  (-> metadata
+      .getDatabaseProductName
+      str/lower-case
+      keyword))
+
+
 (defn prep
   [conn]
   (let [metadata (.getMetaData conn)]
     {:metadata metadata
-     :dbtype   (-> metadata
-                   .getDatabaseProductName
-                   str/lower-case
-                   keyword)}))
+     :dbtype   (database-product-name metadata)}))
 
 (defn datafy-result-set
   [rs]

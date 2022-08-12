@@ -15,8 +15,25 @@
 
 (def test-dbspecs
   [test-postgres
-   #_test-sqlite-mem
+   test-sqlite-mem
    test-sqlite-fs])
+
+(defn build-stmt
+  "helper to vary sql by db type"
+  [conn stmt-parts]
+  (let [dbtype (dbx/database-product-name (.getMetaData conn))]
+    [(reduce (fn [s part]
+               (cond
+                 (string? part)                   (str s part)
+                 ((:exclude (first part)) dbtype) s
+                 :else                            (str s (second part))))
+             ""
+             stmt-parts)]))
+
+(defn execute-many!
+  [conn stmts]
+  (doseq [stmt stmts]
+    (jdbc/execute! conn (build-stmt conn stmt))))
 
 (defn create-tables
   [conn]
@@ -25,53 +42,49 @@
       (jdbc/execute! conn [(str "DROP TABLE " table-name)])
       (catch Exception _)))
 
-  (jdbc/execute!
+  (execute-many!
    conn
-   ["CREATE TABLE users (
-       id integer PRIMARY KEY NOT NULL,
-       username text NOT NULL
-    )"])
+   [["CREATE TABLE users ("
+     "  id integer PRIMARY KEY NOT NULL,"
+     "  username text NOT NULL"
+     ")"]
+    ["CREATE TABLE todo_lists ("
+     "  id integer PRIMARY KEY NOT NULL,"
+     "  created_by_id INTEGER,"
+     "  FOREIGN KEY(created_by_id)"
+     "    REFERENCES users(id)"
+     ")"]
+    ["CREATE TABLE todos ("
+     "   id integer PRIMARY KEY NOT NULL,"
+     "   todo_list_id INTEGER,"
+     "   todo_title text NOT NULL,"
+     "   created_by_id INTEGER,"
+     "   FOREIGN KEY(todo_list_id)"
+     "     REFERENCES todo_lists(id),"
+     "   FOREIGN KEY(created_by_id)"
+     "     REFERENCES users(id)"
+     ")"]]))
 
-  (jdbc/execute!
+(defn create-multi-fk-tables
+  [conn]
+  (doseq [table-name ["t2" "t1"]]
+    (try
+      (jdbc/execute! conn [(str "DROP TABLE " table-name)])
+      (catch Exception _)))
+  (execute-many!
    conn
-   ["CREATE TABLE todo_lists (
-       id integer PRIMARY KEY NOT NULL,
-       created_by_id INTEGER,
-       updated_by_id INTEGER
-    )"])
-
-  (jdbc/execute!
-   conn
-   ["CREATE TABLE todos (
-       id integer PRIMARY KEY NOT NULL,
-       todo_list_id INTEGER,
-       todo_title text NOT NULL,
-       created_by_id INTEGER,
-       updated_by_id INTEGER,
-       CONSTRAINT fk_todo_list
-         FOREIGN KEY(todo_list_id)
-           REFERENCES todo_lists(id)
-    )"])
-
-  #_#_
-  (jdbc/execute!
-   conn
-   ["CREATE TABLE t1 (
-       a INTEGER,
-       b INTEGER,
-       c INTEGER,
-       PRIMARY KEY (a, b)
-     )"])
-
-  (jdbc/execute!
-   conn
-   ["CREATE TABLE t2 (
-       x INTEGER PRIMARY KEY,
-       y INTEGER,
-       z INTEGER,
-       FOREIGN KEY (x, y) REFERENCES t1 (a, b)
-     )"])
-  )
+   [["CREATE TABLE t1 ("
+     "   a INTEGER,"
+     "   b INTEGER,"
+     "   c INTEGER,"
+     "   PRIMARY KEY (a, b)"
+     ")"]
+    ["CREATE TABLE t2 ("
+     "   x INTEGER PRIMARY KEY,"
+     "   y INTEGER,"
+     "   z INTEGER,"
+     "   CONSTRAINT \"foo\" FOREIGN KEY (x, y) REFERENCES t1 (a, b)"
+     ")"]]))
 
 (defn with-test-db
   [t]
@@ -137,25 +150,16 @@
                                                       :primary-key? false}
                                       :created_by_id {:type         :integer
                                                       :nullable?    true
-                                                      :primary-key? false}
-                                      :updated_by_id {:type         :integer
-                                                      :nullable?    true
                                                       :primary-key? false}}
                        :foreign-keys {[:todo_list_id]  [:todo_lists :id]
-                                      #_#_[:created_by_id] [:users :id]
-                                      #_#_[:updated_by_id] [:users :id]}}
+                                      [:created_by_id] [:users :id]}}
           :todo_lists {:columns      {:id            {:type         :integer
                                                       :primary-key? true
                                                       :nullable?    false}
                                       :created_by_id {:type         :integer
                                                       :nullable?    true
-                                                      :primary-key? false}
-                                      :updated_by_id {:type         :integer
-                                                      :nullable?    true
                                                       :primary-key? false}}
-                       :foreign-keys {#_#_#_#_
-                                      [:created_by_id] [:users :id]
-                                      [:updated_by_id] [:users :id]}}}
+                       :foreign-keys {[:created_by_id] [:users :id]}}}
          (dbx/xray @test-dbconn))))
 
 (comment
