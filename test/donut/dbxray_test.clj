@@ -125,7 +125,7 @@
                                       :username {:type         :text
                                                  :nullable?    false
                                                  :primary-key? false}}
-                       #_#_:foreign-keys {}}
+                       :foreign-keys {}}
           :todos      {:columns      {:id            {:type         :integer
                                                       :nullable?    false
                                                       :primary-key? true}
@@ -141,9 +141,9 @@
                                       :updated_by_id {:type         :integer
                                                       :nullable?    true
                                                       :primary-key? false}}
-                       #_#_:foreign-keys {[:todo_list_id]  [:todo_list :id]
-                                          [:created_by_id] [:users :id]
-                                          [:updated_by_id] [:users :id]}}
+                       :foreign-keys {[:todo_list_id]  [:todo_lists :id]
+                                      #_#_[:created_by_id] [:users :id]
+                                      #_#_[:updated_by_id] [:users :id]}}
           :todo_lists {:columns      {:id            {:type         :integer
                                                       :primary-key? true
                                                       :nullable?    false}
@@ -153,8 +153,9 @@
                                       :updated_by_id {:type         :integer
                                                       :nullable?    true
                                                       :primary-key? false}}
-                       #_#_:foreign-keys {[:created_by_id] [:users :id]
-                                          [:updated_by_id] [:users :id]}}}
+                       :foreign-keys {#_#_#_#_
+                                      [:created_by_id] [:users :id]
+                                      [:updated_by_id] [:users :id]}}}
          (dbx/xray @test-dbconn))))
 
 (comment

@@ -56,7 +56,7 @@
         (.getColumns nil (schema-pattern dmbd) table-name nil)
         datafy-result-set)))
 
-(defn parse-foreign-keys
+(defn- parse-foreign-keys
   [fks]
   (->> fks
        (group-by :pk_name)
@@ -105,7 +105,9 @@
         columns (group-by :table_name (get-columns dbmd))]
     (reduce (fn [xr {:keys [table_name]}]
               (let [table-cols (get columns table_name)]
-                (assoc xr (keyword table_name) {:columns (build-columns dbmd table_name table-cols)})))
+                (assoc xr (keyword table_name) {:columns (build-columns dbmd table_name table-cols)
+                                                :foreign-keys (->> (get-foreign-keys dbmd table_name)
+                                                                   parse-foreign-keys)})))
             {}
             tables)))
 
