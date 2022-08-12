@@ -16,6 +16,17 @@
   [_]
   nil)
 
+(defmulti normalize-column-type (fn [{:keys [dbtype]} _col-type] dbtype))
+(defmethod normalize-column-type :postgresql
+  [_ col-type]
+  (col-type
+   {:int4 :integer}
+   col-type))
+
+(defmethod normalize-column-type :default
+  [_ col-type]
+  col-type)
+
 (defn prep
   [conn]
   (let [metadata (.getMetaData conn)]
@@ -39,11 +50,25 @@
         datafy-result-set)))
 
 (defn get-columns
-  [{:keys [metadata] :as dmbd}]
+  [{:keys [metadata] :as dmbd} & [table-name]]
   (binding [njdf/*datafy-failure* :omit]
     (-> metadata
-        (.getColumns nil (schema-pattern dmbd) nil nil)
+        (.getColumns nil (schema-pattern dmbd) table-name nil)
         datafy-result-set)))
+
+(defn parse-foreign-keys
+  [fks]
+  (->> fks
+       (group-by :pk_name)
+       vals
+       (map (fn [fk-group]
+              (reduce (fn [kv fk]
+                        (-> kv
+                            (update 0 conj (keyword (:fkcolumn_name fk)))
+                            (update 1 conj (keyword (:pkcolumn_name fk)))))
+                      [[] [(keyword (:pktable_name (first fk-group)))]]
+                      fk-group)))
+       (into {})))
 
 (defn get-foreign-keys
   [{:keys [metadata] :as dbmd} table-name]
@@ -64,7 +89,10 @@
   (let [fks (group-by :fkcolumn_name (get-foreign-keys dbmd table-name))
         pks (group-by :column_name (get-primary-keys dbmd table-name))]
     (reduce (fn [cols-map {:keys [column_name is_nullable type_name] :as col}]
-              (assoc cols-map (keyword column_name) {:type         (-> type_name str/lower-case keyword)
+              (assoc cols-map (keyword column_name) {:type         (->> type_name
+                                                                        str/lower-case
+                                                                        keyword
+                                                                        (normalize-column-type dbmd))
                                                      :nullable?    (= "YES" is_nullable)
                                                      :primary-key? (boolean (get pks column_name))}))
             {}

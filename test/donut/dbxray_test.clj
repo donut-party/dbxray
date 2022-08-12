@@ -1,6 +1,6 @@
 (ns donut.dbxray-test
   (:require
-   [clojure.test :refer [deftest is use-fixtures]]
+   [clojure.test :refer [deftest is use-fixtures testing]]
    [donut.dbxray :as dbx]
    [next.jdbc :as jdbc])
   (:import
@@ -20,7 +20,7 @@
 
 (defn create-tables
   [conn]
-  (doseq [table-name ["todos" "todo_lists" "users"]]
+  (doseq [table-name ["todos" "todo_lists" "users" #_#_"t2" "t1"]]
     (try
       (jdbc/execute! conn [(str "DROP TABLE " table-name)])
       (catch Exception _)))
@@ -28,14 +28,14 @@
   (jdbc/execute!
    conn
    ["CREATE TABLE users (
-       id integer PRIMARY KEY,
+       id integer PRIMARY KEY NOT NULL,
        username text NOT NULL
     )"])
 
   (jdbc/execute!
    conn
    ["CREATE TABLE todo_lists (
-       id integer PRIMARY KEY,
+       id integer PRIMARY KEY NOT NULL,
        created_by_id INTEGER,
        updated_by_id INTEGER
     )"])
@@ -43,7 +43,7 @@
   (jdbc/execute!
    conn
    ["CREATE TABLE todos (
-       id integer PRIMARY KEY,
+       id integer PRIMARY KEY NOT NULL,
        todo_list_id INTEGER,
        todo_title text NOT NULL,
        created_by_id INTEGER,
@@ -52,6 +52,25 @@
          FOREIGN KEY(todo_list_id)
            REFERENCES todo_lists(id)
     )"])
+
+  #_#_
+  (jdbc/execute!
+   conn
+   ["CREATE TABLE t1 (
+       a INTEGER,
+       b INTEGER,
+       c INTEGER,
+       PRIMARY KEY (a, b)
+     )"])
+
+  (jdbc/execute!
+   conn
+   ["CREATE TABLE t2 (
+       x INTEGER PRIMARY KEY,
+       y INTEGER,
+       z INTEGER,
+       FOREIGN KEY (x, y) REFERENCES t1 (a, b)
+     )"])
   )
 
 (defn with-test-db
@@ -62,42 +81,80 @@
       (reset! test-dbconn (jdbc/get-connection db)))
     (try
       (create-tables @test-dbconn)
-      (t)
+      (testing (str "db: " db)
+        (t))
       (finally (.close @test-dbconn)))))
 
 (use-fixtures :each with-test-db)
 
+(deftest parse-foreign-keys
+  (is (= {[:x :y] [:t1 :a :b]}
+         (#'dbx/parse-foreign-keys [{:fkcolumn_name "x",
+                                     :fktable_schem "public",
+                                     :pk_name "t1_pkey",
+                                     :fktable_cat nil,
+                                     :pktable_name "t1",
+                                     :delete_rule 3,
+                                     :deferrability 7,
+                                     :key_seq 1,
+                                     :pkcolumn_name "a",
+                                     :fktable_name "t2",
+                                     :pktable_cat nil,
+                                     :update_rule 3,
+                                     :pktable_schem "public",
+                                     :fk_name "t2_x_y_fkey"}
+                                    {:fkcolumn_name "y",
+                                     :fktable_schem "public",
+                                     :pk_name "t1_pkey",
+                                     :fktable_cat nil,
+                                     :pktable_name "t1",
+                                     :delete_rule 3,
+                                     :deferrability 7,
+                                     :key_seq 2,
+                                     :pkcolumn_name "b",
+                                     :fktable_name "t2",
+                                     :pktable_cat nil,
+                                     :update_rule 3,
+                                     :pktable_schem "public",
+                                     :fk_name "t2_x_y_fkey"}]))))
+
 (deftest returns-tables
-  (is (= {:users      {:columns {:id       {:type         :integer
-                                            :nullable?    true
-                                            :primary-key? true}
-                                 :username {:type         :text
-                                            :nullable?    false
-                                            :primary-key? false}}}
-          :todos      {:columns {:id            {:type         :integer
-                                                 :nullable?    true
-                                                 :primary-key? true}
-                                 :todo_list_id  {:type         :integer
-                                                 :nullable?    true
-                                                 :primary-key? false}
-                                 :todo_title    {:type         :text
+  (is (= {:users      {:columns      {:id       {:type         :integer
                                                  :nullable?    false
-                                                 :primary-key? false}
-                                 :created_by_id {:type         :integer
-                                                 :nullable?    true
-                                                 :primary-key? false}
-                                 :updated_by_id {:type         :integer
-                                                 :nullable?    true
-                                                 :primary-key? false}}}
-          :todo_lists {:columns {:id            {:type         :integer
-                                                 :primary-key? true
-                                                 :nullable?    false}
-                                 :created_by_id {:type         :integer
-                                                 :nullable?    true
-                                                 :primary-key? false}
-                                 :updated_by_id {:type         :integer
-                                                 :nullable?    true
-                                                 :primary-key? false}}}}
+                                                 :primary-key? true}
+                                      :username {:type         :text
+                                                 :nullable?    false
+                                                 :primary-key? false}}
+                       #_#_:foreign-keys {}}
+          :todos      {:columns      {:id            {:type         :integer
+                                                      :nullable?    false
+                                                      :primary-key? true}
+                                      :todo_list_id  {:type         :integer
+                                                      :nullable?    true
+                                                      :primary-key? false}
+                                      :todo_title    {:type         :text
+                                                      :nullable?    false
+                                                      :primary-key? false}
+                                      :created_by_id {:type         :integer
+                                                      :nullable?    true
+                                                      :primary-key? false}
+                                      :updated_by_id {:type         :integer
+                                                      :nullable?    true
+                                                      :primary-key? false}}
+                       #_#_:foreign-keys {[:todo_list_id]  [:todo_list :id]
+                                          [:created_by_id] [:users :id]
+                                          [:updated_by_id] [:users :id]}}
+          :todo_lists {:columns      {:id            {:type         :integer
+                                                      :primary-key? true
+                                                      :nullable?    false}
+                                      :created_by_id {:type         :integer
+                                                      :nullable?    true
+                                                      :primary-key? false}
+                                      :updated_by_id {:type         :integer
+                                                      :nullable?    true
+                                                      :primary-key? false}}
+                       #_#_:foreign-keys {[:created_by_id] [:users :id]
+                                          [:updated_by_id] [:users :id]}}}
          (dbx/xray @test-dbconn))))
 
 (comment
@@ -112,7 +169,9 @@
 
   (with-open [conn (jdbc/get-connection {:dbtype "sqlite" :dbname "sqlite.db"})]
     (create-tables conn)
-    (dbx/get-foreign-keys (dbx/prep conn)))
+    (dbx/get-columns (dbx/prep conn) "todos"))
+
+  (dbx/get-columns (dbx/prep epg-conn) "todos")
 
   (dbx/explore [md pg-conn]
                (df/datafy (.getImportedKeys md nil nil "todos")))
