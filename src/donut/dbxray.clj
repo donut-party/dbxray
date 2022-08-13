@@ -6,26 +6,35 @@
    [next.jdbc.datafy :as njdf]
    [next.jdbc.result-set :as njrs]))
 
-(defmulti schema-pattern :dbtype)
 
-(defmethod schema-pattern :postgresql
+(def default-adapter
+  {:schema-pattern nil
+   :column-type    {}
+   :predicates     {:nullable? (fn [is_nullable] (= "YES" is_nullable))
+                    :unique?   (fn [{:keys [non_unique]}] (not non_unique))}})
+
+(defmulti adapter* :dbtype)
+
+(defmethod adapter* :postgresql
   [_]
-  "public")
+  {:schema-pattern "public"
+   :column-types   {:int4 :integer}})
 
-(defmethod schema-pattern :sqlite
+(defmethod adapter* :sqlite
+  [_]
+  {:predicates     {:nullable? (fn [is_nullable] (= "YES" is_nullable))
+                    :unique?   (fn [{:keys [non_unique]}] (= 0 non_unique))}})
+
+(defmethod adapter* :default
   [_]
   nil)
 
-(defmulti normalize-column-type (fn [{:keys [dbtype]} _col-type] dbtype))
-(defmethod normalize-column-type :postgresql
-  [_ col-type]
-  (col-type
-   {:int4 :integer}
-   col-type))
-
-(defmethod normalize-column-type :default
-  [_ col-type]
-  col-type)
+(defn adapter
+  [dbmd]
+  (let [{:keys [schema-pattern column-types predicates]} (adapter* dbmd)]
+    {:schema-pattern (or schema-pattern (:schema-pattern default-adapter))
+     :column-types   (merge (:column-types default-adapter) column-types)
+     :predicates     (merge (:predicates default-adapter) predicates)}))
 
 (defn database-product-name
   [metadata]
@@ -37,9 +46,11 @@
 
 (defn prep
   [conn]
-  (let [metadata (.getMetaData conn)]
-    {:metadata metadata
-     :dbtype   (database-product-name metadata)}))
+  (let [metadata (.getMetaData conn)
+        dbtype   (database-product-name metadata)
+        dbmd     {:metadata  metadata
+                  :dbtype    dbtype}]
+    (assoc dbmd :dbadapter (adapter dbmd))))
 
 (defn datafy-result-set
   [rs]
@@ -47,18 +58,24 @@
       (njrs/datafiable-result-set nil {:builder-fn njrs/as-unqualified-lower-maps})
       df/datafy))
 
+(defn get-index-info
+  [{:keys [metadata dbadapter]} & [table-name]]
+  (-> metadata
+      (.getIndexInfo nil (:schema-pattern dbadapter) table-name true true)
+      datafy-result-set))
+
 (defn get-tables
-  [{:keys [metadata] :as dbmd}]
+  [{:keys [metadata dbadapter]}]
   (binding [njdf/*datafy-failure* :omit]
     (-> metadata
-        (.getTables nil (schema-pattern dbmd) nil (into-array ["TABLE"]))
+        (.getTables nil (:schema-pattern dbadapter) nil (into-array ["TABLE"]))
         datafy-result-set)))
 
 (defn get-columns
-  [{:keys [metadata] :as dmbd} & [table-name]]
+  [{:keys [metadata dbadapter]} & [table-name]]
   (binding [njdf/*datafy-failure* :omit]
     (-> metadata
-        (.getColumns nil (schema-pattern dmbd) table-name nil)
+        (.getColumns nil (:schema-pattern dbadapter) table-name nil)
         datafy-result-set)))
 
 (defn- parse-foreign-keys
@@ -76,30 +93,46 @@
        (into {})))
 
 (defn get-foreign-keys
-  [{:keys [metadata] :as dbmd} table-name]
+  [{:keys [metadata dbadapter]} table-name]
   (binding [njdf/*datafy-failure* :omit]
     (-> metadata
-        (.getImportedKeys nil (schema-pattern dbmd) table-name)
+        (.getImportedKeys nil (:schema-pattern dbadapter) table-name)
         datafy-result-set)))
 
 (defn get-primary-keys
-  [{:keys [metadata] :as dbmd} table-name]
+  [{:keys [metadata dbadapter]} table-name]
   (binding [njdf/*datafy-failure* :omit]
     (-> metadata
-        (.getPrimaryKeys nil (schema-pattern dbmd) table-name)
+        (.getPrimaryKeys nil (:schema-pattern dbadapter) table-name)
         datafy-result-set)))
 
 (defn build-columns
-  [dbmd table-name table-cols]
+  [{{:keys [predicates]} :dbadapter
+    :keys [dbadapter]
+    :as dbmd}
+   table-name
+   table-cols]
   (let [fks (group-by :fkcolumn_name (get-foreign-keys dbmd table-name))
-        pks (group-by :column_name (get-primary-keys dbmd table-name))]
-    (reduce (fn [cols-map {:keys [column_name is_nullable type_name] :as col}]
-              (assoc cols-map (keyword column_name) {:type         (->> type_name
-                                                                        str/lower-case
-                                                                        keyword
-                                                                        (normalize-column-type dbmd))
-                                                     :nullable?    (= "YES" is_nullable)
-                                                     :primary-key? (boolean (get pks column_name))}))
+        pks (group-by :column_name (get-primary-keys dbmd table-name))
+        ixs (group-by :column_name (get-index-info dbmd table-name))]
+    (reduce (fn [cols-map {:keys [column_name is_nullable type_name] :as _col}]
+              (let [fk-ref       (some->> (get fks column_name)
+                                          first
+                                          ((juxt :pktable_name :pkcolumn_name))
+                                          (mapv keyword))
+                    nullable?    ((:nullable? predicates) is_nullable)
+                    primary-key? (get pks column_name)
+                    unique?      (->> (get ixs column_name)
+                                      (filter (:unique? predicates))
+                                      seq)]
+                (assoc cols-map
+                       (keyword column_name)
+                       (cond-> {:type (let [raw-col-type (-> type_name str/lower-case keyword)]
+                                        (get-in dbadapter [:column-types raw-col-type] raw-col-type))}
+                         nullable?    (assoc :nullable? true)
+                         primary-key? (assoc :primary-key? true)
+                         unique?      (assoc :unique? true)
+                         fk-ref       (assoc :refers-to fk-ref)))))
             {}
             table-cols)))
 
@@ -111,8 +144,8 @@
     (reduce (fn [xr {:keys [table_name]}]
               (let [table-cols (get columns table_name)]
                 (assoc xr (keyword table_name) {:columns (build-columns dbmd table_name table-cols)
-                                                :foreign-keys (->> (get-foreign-keys dbmd table_name)
-                                                                   parse-foreign-keys)})))
+                                                #_#_:foreign-keys (->> (get-foreign-keys dbmd table_name)
+                                                                       parse-foreign-keys)})))
             {}
             tables)))
 

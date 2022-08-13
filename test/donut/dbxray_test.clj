@@ -45,17 +45,17 @@
   (execute-many!
    conn
    [["CREATE TABLE users ("
-     "  id integer PRIMARY KEY NOT NULL,"
-     "  username text NOT NULL"
+     "  id integer PRIMARY KEY NOT NULL UNIQUE,"
+     "  username text NOT NULL UNIQUE"
      ")"]
     ["CREATE TABLE todo_lists ("
-     "  id integer PRIMARY KEY NOT NULL,"
+     "  id integer PRIMARY KEY NOT NULL UNIQUE,"
      "  created_by_id INTEGER,"
      "  FOREIGN KEY(created_by_id)"
      "    REFERENCES users(id)"
      ")"]
     ["CREATE TABLE todos ("
-     "   id integer PRIMARY KEY NOT NULL,"
+     "   id integer PRIMARY KEY NOT NULL UNIQUE,"
      "   todo_list_id INTEGER,"
      "   todo_title text NOT NULL,"
      "   created_by_id INTEGER,"
@@ -133,33 +133,36 @@
 
 (deftest returns-tables
   (is (= {:users      {:columns      {:id       {:type         :integer
-                                                 :nullable?    false
-                                                 :primary-key? true}
-                                      :username {:type         :text
-                                                 :nullable?    false
-                                                 :primary-key? false}}
+                                                 :primary-key? true
+                                                 :unique?      true}
+                                      :username {:type    :text
+                                                 :unique? true}}
+                       #_#_
                        :foreign-keys {}}
-          :todos      {:columns      {:id            {:type         :integer
-                                                      :nullable?    false
-                                                      :primary-key? true}
-                                      :todo_list_id  {:type         :integer
-                                                      :nullable?    true
-                                                      :primary-key? false}
-                                      :todo_title    {:type         :text
-                                                      :nullable?    false
-                                                      :primary-key? false}
-                                      :created_by_id {:type         :integer
-                                                      :nullable?    true
-                                                      :primary-key? false}}
-                       :foreign-keys {[:todo_list_id]  [:todo_lists :id]
-                                      [:created_by_id] [:users :id]}}
           :todo_lists {:columns      {:id            {:type         :integer
                                                       :primary-key? true
-                                                      :nullable?    false}
-                                      :created_by_id {:type         :integer
-                                                      :nullable?    true
-                                                      :primary-key? false}}
-                       :foreign-keys {[:created_by_id] [:users :id]}}}
+                                                      :unique?      true}
+                                      :created_by_id {:type      :integer
+                                                      :nullable? true
+                                                      :refers-to [:users :id]}}
+                       ;; I want to support this but sqlite doesn't return names for foreign key constraints
+                       ;; so there's no way to tell when you have compound keys
+                       #_#_
+                       :foreign-keys {[:created_by_id] [:users :id]}}
+
+          :todos {:columns      {:id            {:type         :integer
+                                                 :primary-key? true
+                                                 :unique?      true}
+                                 :todo_list_id  {:type      :integer
+                                                 :nullable? true
+                                                 :refers-to [:todo_lists :id]}
+                                 :todo_title    {:type :text}
+                                 :created_by_id {:type      :integer
+                                                 :nullable? true
+                                                 :refers-to [:users :id]}}
+                  #_#_
+                  :foreign-keys {[:todo_list_id]  [:todo_lists :id]
+                                 [:created_by_id] [:users :id]}}}
          (dbx/xray @test-dbconn))))
 
 (comment
@@ -179,5 +182,5 @@
   (dbx/get-columns (dbx/prep epg-conn) "todos")
 
   (dbx/explore [md pg-conn]
-               (df/datafy (.getImportedKeys md nil nil "todos")))
+               (.getImportedKeys md nil nil "todos"))
   )
