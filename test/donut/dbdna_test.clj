@@ -2,33 +2,38 @@
   (:require
    [clojure.test :refer [deftest is use-fixtures testing]]
    [donut.dbdna :as dbd]
-   [next.jdbc :as jdbc])
+   [next.jdbc :as jdbc]
+   [clojure.string :as str])
   (:import
    (io.zonky.test.db.postgres.embedded EmbeddedPostgres)))
 
 (def test-dbconn (atom nil))
 (defonce embedded-pg (future (EmbeddedPostgres/start)))
 
-(def ^:private test-postgres {:dbtype "embedded-postgres" :dbname "clojure_test"})
+(def ^:private test-postgres {:dbtype "embedded-postgres" :dbname "dbdna_test"})
 (def ^:private test-sqlite-mem {:dbtype "sqlite" :connection-uri "jdbc:sqlite::memory:"})
 (def ^:private test-sqlite-fs {:dbtype "sqlite" :dbname "sqlite.db"})
+(def ^:private test-mysql {:dbtype "mysql" :dbname "dbdna_test" :user "root"})
+
 
 (def test-dbspecs
   [test-postgres
    test-sqlite-mem
-   test-sqlite-fs])
+   test-sqlite-fs
+   test-mysql])
 
 (defn build-stmt
   "helper to vary sql by db type"
   [conn stmt-parts]
   (let [dbtype (dbd/database-product-name (.getMetaData conn))]
-    [(reduce (fn [s part]
-               (cond
-                 (string? part)                   (str s part)
-                 ((:exclude (first part)) dbtype) s
-                 :else                            (str s (second part))))
-             ""
-             stmt-parts)]))
+    [(->> stmt-parts
+          (filter (fn [part]
+                    (or (string? part)
+                        (let [[rule dbtypes] part]
+                          (or (and (= :exclude rule) (not (dbtypes dbtype)))
+                              (and (= :include rule) (dbtypes dbtype)))))))
+          (map (fn [part] (if (string? part) part (last part))))
+          (str/join ""))]))
 
 (defn execute-many!
   [conn stmts]
@@ -46,7 +51,7 @@
    conn
    [["CREATE TABLE users ("
      "  id integer PRIMARY KEY NOT NULL UNIQUE,"
-     "  username text NOT NULL UNIQUE"
+     "  username varchar(256) NOT NULL UNIQUE"
      ")"]
     ["CREATE TABLE todo_lists ("
      "  id integer PRIMARY KEY NOT NULL UNIQUE,"
@@ -57,7 +62,8 @@
     ["CREATE TABLE todos ("
      "   id integer PRIMARY KEY NOT NULL UNIQUE,"
      "   todo_list_id INTEGER,"
-     "   todo_title text NOT NULL,"
+     "   todo_title varchar(256) NOT NULL,"
+     "   notes text NOT NULL,"
      "   created_by_id INTEGER,"
      "   FOREIGN KEY(todo_list_id)"
      "     REFERENCES todo_lists(id),"
@@ -135,22 +141,16 @@
   (is (= {:users      {:columns      {:id       {:column-type  :integer
                                                  :primary-key? true
                                                  :unique?      true}
-                                      :username {:column-type :text
+                                      :username {:column-type :varchar
                                                  :unique?     true}}
-                       :column-order [:id :username]
-                       #_#_
-                       :foreign-keys {}}
+                       :column-order [:id :username]}
           :todo_lists {:columns      {:id            {:column-type  :integer
                                                       :primary-key? true
                                                       :unique?      true}
                                       :created_by_id {:column-type :integer
                                                       :nullable?   true
                                                       :refers-to   [:users :id]}}
-                       :column-order [:id :created_by_id]
-                       ;; I want to support this but sqlite doesn't return names for foreign key constraints
-                       ;; so there's no way to tell when you have compound keys
-                       #_#_
-                       :foreign-keys {[:created_by_id] [:users :id]}}
+                       :column-order [:id :created_by_id]}
 
           :todos {:columns      {:id            {:column-type  :integer
                                                  :primary-key? true
@@ -158,14 +158,12 @@
                                  :todo_list_id  {:column-type :integer
                                                  :nullable?   true
                                                  :refers-to   [:todo_lists :id]}
-                                 :todo_title    {:column-type :text}
+                                 :todo_title    {:column-type :varchar}
+                                 :notes         {:column-type :text}
                                  :created_by_id {:column-type :integer
                                                  :nullable?   true
                                                  :refers-to   [:users :id]}}
-                  :column-order [:id :todo_list_id :todo_title :created_by_id]
-                  #_#_
-                  :foreign-keys {[:todo_list_id]  [:todo_lists :id]
-                                 [:created_by_id] [:users :id]}}}
+                  :column-order [:id :todo_list_id :todo_title :notes :created_by_id]}}
          (dbd/dna @test-dbconn))))
 
 (comment

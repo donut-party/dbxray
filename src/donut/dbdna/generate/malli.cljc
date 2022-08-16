@@ -10,7 +10,7 @@
    :text       'string?})
 
 (defn column-spec
-  [column-name table-name dna]
+  [dna table-name column-name]
   (let [{:keys [column-type primary-key? nullable? refers-to]} (get-in dna [table-name :columns column-name])]
     [column-name
      {:optional? (boolean nullable?)}
@@ -30,7 +30,7 @@
   (reduce (fn [specs table-name]
             (let [table-dna (table-name dna)]
               (->> (reduce (fn [spec column-name]
-                             (conj spec (column-spec column-name table-name dna)))
+                             (conj spec (column-spec dna table-name column-name)))
                            [:map]
                            (:column-order table-dna))
                    (conj ['def (-> table-name

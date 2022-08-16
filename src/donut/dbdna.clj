@@ -9,7 +9,7 @@
 
 (def default-adapter
   {:schema-pattern nil
-   :column-type    {}
+   :column-types   {#"int" :integer}
    :predicates     {:nullable? (fn [is_nullable] (= "YES" is_nullable))
                     :unique?   (fn [{:keys [non_unique]}] (not non_unique))}})
 
@@ -17,12 +17,12 @@
 
 (defmethod adapter* :postgresql
   [_]
-  {:schema-pattern "public"
-   :column-types   {:int4 :integer}})
+  {:schema-pattern "public"})
 
 (defmethod adapter* :sqlite
   [_]
-  {:predicates {:unique? (fn [{:keys [non_unique]}] (= 0 non_unique))}})
+  {:predicates   {:unique? (fn [{:keys [non_unique]}] (= 0 non_unique))}
+   :column-types {#"varchar" :varchar}})
 
 (defmethod adapter* :default
   [_]
@@ -108,10 +108,17 @@
         (.getTables nil (:schema-pattern dbadapter) nil (into-array ["TABLE"]))
         datafy-result-set)))
 
+(defn- adapt-column-type
+  [raw-col-type column-types]
+  (loop [[[pattern normalized-col-type] :as column-types] (seq column-types)]
+    (if pattern
+      (if (re-find pattern raw-col-type)
+        normalized-col-type
+        (recur (rest column-types)))
+      (keyword raw-col-type))))
+
 (defn build-columns
-  [{{:keys [predicates]} :dbadapter
-    :keys                [dbadapter]
-    :as                  dbmd}
+  [{{:keys [predicates column-types]} :dbadapter :as dbmd}
    table-name
    table-cols]
   (let [fks (group-by :fkcolumn_name (get-foreign-keys dbmd table-name))
@@ -129,8 +136,7 @@
                                       seq)]
                 (assoc cols-map
                        (keyword column_name)
-                       (cond-> {:column-type (let [raw-col-type (-> type_name str/lower-case keyword)]
-                                               (get-in dbadapter [:column-types raw-col-type] raw-col-type))}
+                       (cond-> {:column-type (adapt-column-type (-> type_name str/lower-case) column-types)}
                          nullable?    (assoc :nullable? true)
                          primary-key? (assoc :primary-key? true)
                          unique?      (assoc :unique? true)
@@ -145,10 +151,8 @@
         columns (group-by :table_name (get-columns dbmd))]
     (reduce (fn [xr {:keys [table_name]}]
               (let [table-cols (get columns table_name)]
-                (assoc xr (keyword table_name) {:columns (build-columns dbmd table_name table-cols)
-                                                :column-order (mapv (comp keyword :column_name) table-cols)
-                                                #_#_:foreign-keys (->> (get-foreign-keys dbmd table_name)
-                                                                       parse-foreign-keys)})))
+                (assoc xr (keyword table_name) {:columns      (build-columns dbmd table_name table-cols)
+                                                :column-order (mapv (comp keyword :column_name) table-cols)})))
             {}
             tables)))
 
