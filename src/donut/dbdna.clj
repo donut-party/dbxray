@@ -71,22 +71,6 @@
         (.getColumns nil (:schema-pattern dbadapter) table-name nil)
         datafy-result-set)))
 
-(defn- parse-foreign-keys
-  "TODO this could be useful for multi-column foreign keys but sqlite, at least,
-  provide the metadata necessary"
-  [fks]
-  (->> fks
-       (group-by :pk_name)
-       vals
-       (map (fn [fk-group]
-              (reduce (fn [kv fk]
-                        (-> kv
-                            (update 0 conj (keyword (:fkcolumn_name fk)))
-                            (update 1 conj (keyword (:pkcolumn_name fk)))))
-                      [[] [(keyword (:pktable_name (first fk-group)))]]
-                      fk-group)))
-       (into {})))
-
 (defn get-foreign-keys
   [{:keys [metadata dbadapter]} & [table-name]]
   (binding [njdf/*datafy-failure* :omit]

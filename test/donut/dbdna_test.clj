@@ -106,37 +106,6 @@
 
 (use-fixtures :each with-test-db)
 
-(deftest parse-foreign-keys
-  (is (= {[:x :y] [:t1 :a :b]}
-         (#'dbd/parse-foreign-keys [{:fkcolumn_name "x",
-                                     :fktable_schem "public",
-                                     :pk_name "t1_pkey",
-                                     :fktable_cat nil,
-                                     :pktable_name "t1",
-                                     :delete_rule 3,
-                                     :deferrability 7,
-                                     :key_seq 1,
-                                     :pkcolumn_name "a",
-                                     :fktable_name "t2",
-                                     :pktable_cat nil,
-                                     :update_rule 3,
-                                     :pktable_schem "public",
-                                     :fk_name "t2_x_y_fkey"}
-                                    {:fkcolumn_name "y",
-                                     :fktable_schem "public",
-                                     :pk_name "t1_pkey",
-                                     :fktable_cat nil,
-                                     :pktable_name "t1",
-                                     :delete_rule 3,
-                                     :deferrability 7,
-                                     :key_seq 2,
-                                     :pkcolumn_name "b",
-                                     :fktable_name "t2",
-                                     :pktable_cat nil,
-                                     :update_rule 3,
-                                     :pktable_schem "public",
-                                     :fk_name "t2_x_y_fkey"}]))))
-
 (deftest returns-tables
   (is (= {:users      {:columns      {:id       {:column-type  :integer
                                                  :primary-key? true
