@@ -13,7 +13,6 @@
 (defn column-spec
   [dna table-name column-name]
   (let [{:keys [column-type primary-key? nullable? refers-to]} (get-in dna [table-name :columns column-name])]
-    (prn "column type column name" column-name column-type)
     (or [column-name
          {:optional? (boolean nullable?)}
 
