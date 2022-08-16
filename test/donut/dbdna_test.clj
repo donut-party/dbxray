@@ -132,34 +132,37 @@
                                      :fk_name "t2_x_y_fkey"}]))))
 
 (deftest returns-tables
-  (is (= {:users      {:columns      {:id       {:type         :integer
+  (is (= {:users      {:columns      {:id       {:column-type  :integer
                                                  :primary-key? true
                                                  :unique?      true}
-                                      :username {:type    :text
-                                                 :unique? true}}
+                                      :username {:column-type :text
+                                                 :unique?     true}}
+                       :column-order [:id :username]
                        #_#_
                        :foreign-keys {}}
-          :todo_lists {:columns      {:id            {:type         :integer
+          :todo_lists {:columns      {:id            {:column-type  :integer
                                                       :primary-key? true
                                                       :unique?      true}
-                                      :created_by_id {:type      :integer
-                                                      :nullable? true
-                                                      :refers-to [:users :id]}}
+                                      :created_by_id {:column-type :integer
+                                                      :nullable?   true
+                                                      :refers-to   [:users :id]}}
+                       :column-order [:id :created_by_id]
                        ;; I want to support this but sqlite doesn't return names for foreign key constraints
                        ;; so there's no way to tell when you have compound keys
                        #_#_
                        :foreign-keys {[:created_by_id] [:users :id]}}
 
-          :todos {:columns      {:id            {:type         :integer
+          :todos {:columns      {:id            {:column-type  :integer
                                                  :primary-key? true
                                                  :unique?      true}
-                                 :todo_list_id  {:type      :integer
-                                                 :nullable? true
-                                                 :refers-to [:todo_lists :id]}
-                                 :todo_title    {:type :text}
-                                 :created_by_id {:type      :integer
-                                                 :nullable? true
-                                                 :refers-to [:users :id]}}
+                                 :todo_list_id  {:column-type :integer
+                                                 :nullable?   true
+                                                 :refers-to   [:todo_lists :id]}
+                                 :todo_title    {:column-type :text}
+                                 :created_by_id {:column-type :integer
+                                                 :nullable?   true
+                                                 :refers-to   [:users :id]}}
+                  :column-order [:id :todo_list_id :todo_title :created_by_id]
                   #_#_
                   :foreign-keys {[:todo_list_id]  [:todo_lists :id]
                                  [:created_by_id] [:users :id]}}}

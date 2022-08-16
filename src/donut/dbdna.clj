@@ -110,8 +110,8 @@
 
 (defn build-columns
   [{{:keys [predicates]} :dbadapter
-    :keys [dbadapter]
-    :as dbmd}
+    :keys                [dbadapter]
+    :as                  dbmd}
    table-name
    table-cols]
   (let [fks (group-by :fkcolumn_name (get-foreign-keys dbmd table-name))
@@ -129,8 +129,8 @@
                                       seq)]
                 (assoc cols-map
                        (keyword column_name)
-                       (cond-> {:type (let [raw-col-type (-> type_name str/lower-case keyword)]
-                                        (get-in dbadapter [:column-types raw-col-type] raw-col-type))}
+                       (cond-> {:column-type (let [raw-col-type (-> type_name str/lower-case keyword)]
+                                               (get-in dbadapter [:column-types raw-col-type] raw-col-type))}
                          nullable?    (assoc :nullable? true)
                          primary-key? (assoc :primary-key? true)
                          unique?      (assoc :unique? true)
@@ -146,6 +146,7 @@
     (reduce (fn [xr {:keys [table_name]}]
               (let [table-cols (get columns table_name)]
                 (assoc xr (keyword table_name) {:columns (build-columns dbmd table_name table-cols)
+                                                :column-order (mapv (comp keyword :column_name) table-cols)
                                                 #_#_:foreign-keys (->> (get-foreign-keys dbmd table_name)
                                                                        parse-foreign-keys)})))
             {}
