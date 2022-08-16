@@ -1,7 +1,7 @@
-(ns donut.dbxray-test
+(ns donut.dbdna-test
   (:require
    [clojure.test :refer [deftest is use-fixtures testing]]
-   [donut.dbxray :as dbx]
+   [donut.dbdna :as dbd]
    [next.jdbc :as jdbc])
   (:import
    (io.zonky.test.db.postgres.embedded EmbeddedPostgres)))
@@ -21,7 +21,7 @@
 (defn build-stmt
   "helper to vary sql by db type"
   [conn stmt-parts]
-  (let [dbtype (dbx/database-product-name (.getMetaData conn))]
+  (let [dbtype (dbd/database-product-name (.getMetaData conn))]
     [(reduce (fn [s part]
                (cond
                  (string? part)                   (str s part)
@@ -102,7 +102,7 @@
 
 (deftest parse-foreign-keys
   (is (= {[:x :y] [:t1 :a :b]}
-         (#'dbx/parse-foreign-keys [{:fkcolumn_name "x",
+         (#'dbd/parse-foreign-keys [{:fkcolumn_name "x",
                                      :fktable_schem "public",
                                      :pk_name "t1_pkey",
                                      :fktable_cat nil,
@@ -163,7 +163,7 @@
                   #_#_
                   :foreign-keys {[:todo_list_id]  [:todo_lists :id]
                                  [:created_by_id] [:users :id]}}}
-         (dbx/xray @test-dbconn))))
+         (dbd/xray @test-dbconn))))
 
 (comment
   (do
@@ -177,10 +177,10 @@
 
   (with-open [conn (jdbc/get-connection {:dbtype "sqlite" :dbname "sqlite.db"})]
     (create-tables conn)
-    (dbx/get-columns (dbx/prep conn) "todos"))
+    (dbd/get-columns (dbd/prep conn) "todos"))
 
-  (dbx/get-columns (dbx/prep epg-conn) "todos")
+  (dbd/get-columns (dbd/prep epg-conn) "todos")
 
-  (dbx/explore [md pg-conn]
+  (dbd/explore [md pg-conn]
                (.getImportedKeys md nil nil "todos"))
   )

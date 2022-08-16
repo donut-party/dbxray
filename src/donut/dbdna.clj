@@ -1,4 +1,4 @@
-(ns donut.dbxray
+(ns donut.dbdna
   (:require
    [clojure.datafy :as df]
    [clojure.string :as str]
@@ -78,6 +78,8 @@
         datafy-result-set)))
 
 (defn- parse-foreign-keys
+  "TODO this could be useful for multi-column foreign keys but sqlite, at least,
+  provide the metadata necessary"
   [fks]
   (->> fks
        (group-by :pk_name)
