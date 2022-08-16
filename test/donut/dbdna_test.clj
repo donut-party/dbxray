@@ -63,7 +63,7 @@
      "   id integer PRIMARY KEY NOT NULL UNIQUE,"
      "   todo_list_id INTEGER,"
      "   todo_title varchar(256) NOT NULL,"
-     "   notes text NOT NULL,"
+     "   notes text,"
      "   created_by_id INTEGER,"
      "   FOREIGN KEY(todo_list_id)"
      "     REFERENCES todo_lists(id),"
@@ -128,7 +128,8 @@
                                                  :nullable?   true
                                                  :refers-to   [:todo_lists :id]}
                                  :todo_title    {:column-type :varchar}
-                                 :notes         {:column-type :text}
+                                 :notes         {:column-type :text
+                                                 :nullable?   true}
                                  :created_by_id {:column-type :integer
                                                  :nullable?   true
                                                  :refers-to   [:users :id]}}
