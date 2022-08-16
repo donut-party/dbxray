@@ -22,8 +22,7 @@
 
 (defmethod adapter* :sqlite
   [_]
-  {:predicates     {:nullable? (fn [is_nullable] (= "YES" is_nullable))
-                    :unique?   (fn [{:keys [non_unique]}] (= 0 non_unique))}})
+  {:predicates     {:unique?   (fn [{:keys [non_unique]}] (= 0 non_unique))}})
 
 (defmethod adapter* :default
   [_]
