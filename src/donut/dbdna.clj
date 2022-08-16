@@ -22,7 +22,7 @@
 
 (defmethod adapter* :sqlite
   [_]
-  {:predicates     {:unique?   (fn [{:keys [non_unique]}] (= 0 non_unique))}})
+  {:predicates {:unique? (fn [{:keys [non_unique]}] (= 0 non_unique))}})
 
 (defmethod adapter* :default
   [_]
@@ -47,8 +47,8 @@
   [conn]
   (let [metadata (.getMetaData conn)
         dbtype   (database-product-name metadata)
-        dbmd     {:metadata  metadata
-                  :dbtype    dbtype}]
+        dbmd     {:metadata metadata
+                  :dbtype   dbtype}]
     (assoc dbmd :dbadapter (adapter dbmd))))
 
 (defn datafy-result-set
