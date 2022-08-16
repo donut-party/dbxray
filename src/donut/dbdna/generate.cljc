@@ -1,5 +1,6 @@
 (ns donut.dbdna.generate
   (:require
+   [clojure.string :as str]
    [weavejester.dependency :as dep]))
 
 (defn table-deps
@@ -25,3 +26,7 @@
                  (dep/depend g table-name dep))
                (dep/graph))
        (dep/topo-sort)))
+
+(defn singularize
+  [k]
+  (-> k name (str/replace #"s$" "")))
