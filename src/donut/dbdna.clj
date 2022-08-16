@@ -59,15 +59,9 @@
 
 (defn get-index-info
   [{:keys [metadata dbadapter]} & [table-name]]
-  (-> metadata
-      (.getIndexInfo nil (:schema-pattern dbadapter) table-name true true)
-      datafy-result-set))
-
-(defn get-tables
-  [{:keys [metadata dbadapter]}]
   (binding [njdf/*datafy-failure* :omit]
     (-> metadata
-        (.getTables nil (:schema-pattern dbadapter) nil (into-array ["TABLE"]))
+        (.getIndexInfo nil (:schema-pattern dbadapter) table-name true true)
         datafy-result-set)))
 
 (defn get-columns
@@ -94,17 +88,24 @@
        (into {})))
 
 (defn get-foreign-keys
-  [{:keys [metadata dbadapter]} table-name]
+  [{:keys [metadata dbadapter]} & [table-name]]
   (binding [njdf/*datafy-failure* :omit]
     (-> metadata
         (.getImportedKeys nil (:schema-pattern dbadapter) table-name)
         datafy-result-set)))
 
 (defn get-primary-keys
-  [{:keys [metadata dbadapter]} table-name]
+  [{:keys [metadata dbadapter]} & [table-name]]
   (binding [njdf/*datafy-failure* :omit]
     (-> metadata
         (.getPrimaryKeys nil (:schema-pattern dbadapter) table-name)
+        datafy-result-set)))
+
+(defn get-tables
+  [{:keys [metadata dbadapter]}]
+  (binding [njdf/*datafy-failure* :omit]
+    (-> metadata
+        (.getTables nil (:schema-pattern dbadapter) nil (into-array ["TABLE"]))
         datafy-result-set)))
 
 (defn build-columns
@@ -137,7 +138,7 @@
             {}
             table-cols)))
 
-(defn xray
+(defn dna
   [conn]
   (let [dbmd    (prep conn)
         tables  (get-tables dbmd)
@@ -149,9 +150,6 @@
                                                                        parse-foreign-keys)})))
             {}
             tables)))
-
-
-
 
 (defmacro explore
   [[binding db-spec] & body]

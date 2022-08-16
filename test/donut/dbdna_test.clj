@@ -163,7 +163,7 @@
                   #_#_
                   :foreign-keys {[:todo_list_id]  [:todo_lists :id]
                                  [:created_by_id] [:users :id]}}}
-         (dbd/xray @test-dbconn))))
+         (dbd/dna @test-dbconn))))
 
 (comment
   (do
