@@ -5,10 +5,10 @@
 
 (defn table-deps
   [dna]
-  (for [[table-name table-dna]   dna
-        [_ column-dna] (:columns table-dna)
-        :let                     [refers-to (first (:refers-to column-dna))]
-        :when                    refers-to]
+  (for [[table-name table-dna] dna
+        [_ column-dna]         (:columns table-dna)
+        :let                   [refers-to (first (:refers-to column-dna))]
+        :when                  refers-to]
     [table-name refers-to]))
 
 (defn column-deps
