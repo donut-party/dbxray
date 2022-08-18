@@ -37,23 +37,19 @@
 (defn generate
   [dna]
   (reduce (fn [specs table-name]
-            (let [{:keys [columns column-order]} (table-name dna)
-                  req-columns                    (->> column-order
-                                                      (filter (->> columns
-                                                                   (filter (fn [[_ {:keys [nullable?]}]] (not nullable?)))
-                                                                   (map first)
-                                                                   set))
-                                                      (mapv #(keyword (format-table-name table-name) (name %))))
-                  opt-columns                    (->> column-order
-                                                      (filter (->> columns
-                                                                   (filter (fn [[_ {:keys [nullable?]}]] nullable?))
-                                                                   (map first)
-                                                                   set))
-                                                      (mapv #(keyword (format-table-name table-name) (name %))))]
+            (let [{:keys [columns]} (table-name dna)
+                  req-columns       (->> columns
+                                         (filter (fn [[_ {:keys [nullable?]}]] (not nullable?)))
+                                         (map first)
+                                         (map #(keyword (format-table-name table-name) (name %))))
+                  opt-columns       (->> columns
+                                         (filter (fn [[_ {:keys [nullable?]}]] nullable?))
+                                         (map first)
+                                         (map #(keyword (format-table-name table-name) (name %))))]
               (-> (reduce (fn [specs column-name]
                             (conj specs (column-spec dna table-name column-name)))
                           specs
-                          column-order)
+                          (keys columns))
                   (conj (list 's/def
                               (keyword "record" (format-table-name table-name))
                               (cond-> '[s/keys]
@@ -62,3 +58,28 @@
                                 true              seq))))))
           []
           (ddg/table-order dna)))
+
+(comment
+  (require '[meander.epsilon :as m])
+  (defn favorite-food-info [foods-by-name user]
+    (m/match {:user          user
+              :foods-by-name foods-by-name}
+
+      {:user          {:name          ?name
+                       :favorite-food {:name ?food}}
+       :foods-by-name {?food {:popularity ?popularity
+                              :calories   ?calories}}}
+      {:name     ?name
+       :favorite {:food       ?food
+                  :popularity ?popularity
+                  :calories   ?calories}}))
+
+  (def foods-by-name
+    {:nachos   {:popularity :high
+                :calories   :lots}
+     :smoothie {:popularity :high
+                :calories   :less}})
+
+  (favorite-food-info foods-by-name
+                      {:name          :alice
+                       :favorite-food {:name :nachos}}))

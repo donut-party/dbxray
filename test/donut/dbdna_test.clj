@@ -108,21 +108,18 @@
 (use-fixtures :each with-test-db)
 
 (deftest returns-tables
-  (is (= {:users      {:columns      {:id       {:column-type  :integer
+  (is (= {:users      {:columns {:id       {:column-type  :integer
+                                            :primary-key? true
+                                            :unique?      true}
+                                 :username {:column-type :varchar
+                                            :unique?     true}}}
+          :todo_lists {:columns {:id            {:column-type  :integer
                                                  :primary-key? true
                                                  :unique?      true}
-                                      :username {:column-type :varchar
-                                                 :unique?     true}}
-                       :column-order [:id :username]}
-          :todo_lists {:columns      {:id            {:column-type  :integer
-                                                      :primary-key? true
-                                                      :unique?      true}
-                                      :created_by_id {:column-type :integer
-                                                      :nullable?   true
-                                                      :refers-to   [:users :id]}}
-                       :column-order [:id :created_by_id]}
-
-          :todos {:columns      {:id            {:column-type  :integer
+                                 :created_by_id {:column-type :integer
+                                                 :nullable?   true
+                                                 :refers-to   [:users :id]}}}
+          :todos      {:columns {:id            {:column-type  :integer
                                                  :primary-key? true
                                                  :unique?      true}
                                  :todo_list_id  {:column-type :integer
@@ -135,8 +132,7 @@
                                                  :nullable?   true
                                                  :refers-to   [:users :id]}
                                  :completed_at  {:column-type :timestamp
-                                                 :nullable?   true}}
-                  :column-order [:id :todo_list_id :todo_title :notes :created_by_id :completed_at]}}
+                                                 :nullable?   true}}}}
          (dbd/dna @test-dbconn))))
 
 (comment

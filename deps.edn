@@ -1,7 +1,9 @@
 {:paths ["src"]
- :deps  {weavejester/dependency              {:mvn/version "0.2.1"}
+ :deps  {camel-snake-kebab/camel-snake-kebab {:mvn/version "0.4.3"}
          com.github.seancorfield/next.jdbc   {:mvn/version "1.2.737"}
-         camel-snake-kebab/camel-snake-kebab {:mvn/version "0.4.3"}}
+         meander/epsilon                     {:mvn/version "0.0.650"}
+         org.flatland/ordered                {:mvn/version "1.15.10"}
+         weavejester/dependency              {:mvn/version "0.2.1"}}
 
  :aliases
  {:test

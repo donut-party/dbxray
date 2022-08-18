@@ -32,10 +32,10 @@
   [dna]
   (reduce (fn [specs table-name]
             (let [table-dna (table-name dna)]
-              (->> (reduce (fn [spec column-name]
-                             (conj spec (column-spec dna table-name column-name)))
-                           [:map]
-                           (:column-order table-dna))
+              (->> (reduce-kv (fn [spec column-name _]
+                                (conj spec (column-spec dna table-name column-name)))
+                              [:map]
+                              (:columns table-dna))
                    (conj ['def (-> table-name
                                    name
                                    (str/replace #"s$" "")

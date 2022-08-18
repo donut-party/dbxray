@@ -1,6 +1,7 @@
 (ns donut.dbdna.generate.spec-test
   (:require
    [clojure.test :refer [deftest is]]
+   [donut.dbdna.fixtures :as ddf]
    [donut.dbdna.generate.spec :as ddgs]))
 
 (deftest generates-spec-specs
@@ -21,32 +22,4 @@
            (s/def :record/todo
              (s/keys :req [:todo/id :todo/todo_title]
                      :opt [:todo/todo_list_id :todo/notes :todo/created_by_id :todo/created_at]))]
-         (ddgs/generate
-          {:users      {:columns      {:id       {:column-type  :integer
-                                                  :primary-key? true
-                                                  :unique?      true}
-                                       :username {:column-type :varchar
-                                                  :unique?     true}}
-                        :column-order [:id :username]}
-           :todo_lists {:columns      {:id            {:column-type  :integer
-                                                       :primary-key? true
-                                                       :unique?      true}
-                                       :created_by_id {:column-type :integer
-                                                       :nullable?   true
-                                                       :refers-to   [:users :id]}}
-                        :column-order [:id :created_by_id]}
-           :todos      {:columns      {:id            {:column-type  :integer
-                                                       :primary-key? true
-                                                       :unique?      true}
-                                       :todo_list_id  {:column-type :integer
-                                                       :nullable?   true
-                                                       :refers-to   [:todo_lists :id]}
-                                       :todo_title    {:column-type :varchar}
-                                       :notes         {:column-type :text
-                                                       :nullable?   true}
-                                       :created_by_id {:column-type :integer
-                                                       :nullable?   true
-                                                       :refers-to   [:users :id]}
-                                       :created_at    {:column-type :timestamp
-                                                       :nullable?   true}}
-                        :column-order [:id :todo_list_id :todo_title :notes :created_by_id :created_at]}}))))
+         (ddgs/generate ddf/todo-list-dna))))

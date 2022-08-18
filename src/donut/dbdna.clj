@@ -2,6 +2,7 @@
   (:require
    [clojure.datafy :as df]
    [clojure.string :as str]
+   [flatland.ordered.map :as omap]
    [next.jdbc :as jdbc]
    [next.jdbc.datafy :as njdf]
    [next.jdbc.result-set :as njrs]))
@@ -125,7 +126,7 @@
                          primary-key? (assoc :primary-key? true)
                          unique?      (assoc :unique? true)
                          fk-ref       (assoc :refers-to fk-ref)))))
-            {}
+            (omap/ordered-map)
             table-cols)))
 
 (defn dna
@@ -135,8 +136,7 @@
         columns (group-by :table_name (get-columns dbmd))]
     (reduce (fn [xr {:keys [table_name]}]
               (let [table-cols (get columns table_name)]
-                (assoc xr (keyword table_name) {:columns      (build-columns dbmd table_name table-cols)
-                                                :column-order (mapv (comp keyword :column_name) table-cols)})))
+                (assoc xr (keyword table_name) {:columns (build-columns dbmd table_name table-cols)})))
             {}
             tables)))
 
