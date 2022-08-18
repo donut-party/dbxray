@@ -65,6 +65,7 @@
      "   todo_title varchar(256) NOT NULL,"
      "   notes text,"
      "   created_by_id INTEGER,"
+     "   completed_at TIMESTAMP NULL,"
      "   FOREIGN KEY(todo_list_id)"
      "     REFERENCES todo_lists(id),"
      "   FOREIGN KEY(created_by_id)"
@@ -132,8 +133,10 @@
                                                  :nullable?   true}
                                  :created_by_id {:column-type :integer
                                                  :nullable?   true
-                                                 :refers-to   [:users :id]}}
-                  :column-order [:id :todo_list_id :todo_title :notes :created_by_id]}}
+                                                 :refers-to   [:users :id]}
+                                 :completed_at  {:column-type :timestamp
+                                                 :nullable?   true}}
+                  :column-order [:id :todo_list_id :todo_title :notes :created_by_id :completed_at]}}
          (dbd/dna @test-dbconn))))
 
 (comment

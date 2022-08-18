@@ -18,7 +18,8 @@
               [:todo_list_id {:optional? true} nat-int?]
               [:todo_title {:optional? false} string?]
               [:notes {:optional? true} string?]
-              [:created_by_id {:optional? true} nat-int?]])]
+              [:created_by_id {:optional? true} nat-int?]
+              [:created_at {:optional? true} inst?]])]
          (ddgm/generate
           {:users      {:columns      {:id       {:column-type  :integer
                                                   :primary-key? true
@@ -44,5 +45,7 @@
                                                        :nullable?   true}
                                        :created_by_id {:column-type :integer
                                                        :nullable?   true
-                                                       :refers-to   [:users :id]}}
-                        :column-order [:id :todo_list_id :todo_title :notes :created_by_id]}}))))
+                                                       :refers-to   [:users :id]}
+                                       :created_at    {:column-type :timestamp
+                                                       :nullable?   true}}
+                        :column-order [:id :todo_list_id :todo_title :notes :created_by_id :created_at]}}))))

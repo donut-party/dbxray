@@ -1,14 +1,14 @@
 (ns donut.dbdna.generate.spec
   (:require
    [camel-snake-kebab.core :as csk]
-   [clojure.string :as str]
    [donut.dbdna.generate :as ddg]))
 
 (def column-types
   {:integer    'pos-int?
    :integer-pk 'nat-int?
    :text       'string?
-   :varchar    'string?})
+   :varchar    'string?
+   :timestamp  'inst?})
 
 (defn format-table-name
   [table-name]

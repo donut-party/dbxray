@@ -8,7 +8,8 @@
   {:integer    'pos-int?
    :integer-pk 'nat-int?
    :text       'string?
-   :varchar    'string?})
+   :varchar    'string?
+   :timestamp  'inst?})
 
 (defn column-spec
   [dna table-name column-name]

@@ -17,9 +17,10 @@
            (s/def :todo/todo_title string?)
            (s/def :todo/notes string?)
            (s/def :todo/created_by_id nat-int?)
+           (s/def :todo/created_at inst?)
            (s/def :record/todo
              (s/keys :req [:todo/id :todo/todo_title]
-                     :opt [:todo/todo_list_id :todo/notes :todo/created_by_id]))]
+                     :opt [:todo/todo_list_id :todo/notes :todo/created_by_id :todo/created_at]))]
          (ddgs/generate
           {:users      {:columns      {:id       {:column-type  :integer
                                                   :primary-key? true
@@ -45,5 +46,7 @@
                                                        :nullable?   true}
                                        :created_by_id {:column-type :integer
                                                        :nullable?   true
-                                                       :refers-to   [:users :id]}}
-                        :column-order [:id :todo_list_id :todo_title :notes :created_by_id]}}))))
+                                                       :refers-to   [:users :id]}
+                                       :created_at    {:column-type :timestamp
+                                                       :nullable?   true}}
+                        :column-order [:id :todo_list_id :todo_title :notes :created_by_id :created_at]}}))))
