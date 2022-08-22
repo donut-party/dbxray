@@ -5,7 +5,7 @@
    [donut.dbdna.generate :as ddg]))
 
 (def column-types
-  {:integer    'pos-int?
+  {:integer    'int?
    :integer-pk 'nat-int?
    :text       'string?
    :varchar    'string?

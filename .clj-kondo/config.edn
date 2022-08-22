@@ -1,0 +1,13 @@
+{:linters {:unresolved-symbol {:exclude [(meander.epsilon/match)
+                                         (meander.epsilon/find)
+                                         (meander.epsilon/search)
+                                         (meander.epsilon/rewrite)
+                                         (meander.epsilon/rewrites)]}
+           :unresolved-var {:exclude [meander.epsilon/and
+                                      meander.epsilon/app
+                                      meander.epsilon/cata
+                                      meander.epsilon/gather
+                                      meander.epsilon/guard
+                                      meander.epsilon/or
+                                      meander.epsilon/pred
+                                      meander.epsilon/seqable]}}}

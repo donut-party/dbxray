@@ -1,85 +1,88 @@
 (ns donut.dbdna.generate.spec
   (:require
    [camel-snake-kebab.core :as csk]
-   [donut.dbdna.generate :as ddg]))
+   [donut.dbdna.generate :as ddg]
+   [meander.epsilon :as m]))
 
 (def column-types
-  {:integer    'pos-int?
+  {:integer    'int?
    :integer-pk 'nat-int?
    :text       'string?
    :varchar    'string?
    :timestamp  'inst?})
 
-(defn format-table-name
-  [table-name]
-  (-> table-name
-      ddg/singularize
-      csk/->kebab-case-string))
-
-(defn column-spec
+(defn column-predicate
   [dna table-name column-name]
-  (let [{:keys [column-type primary-key? refers-to]} (get-in dna [table-name :columns column-name])]
+  (let [{:keys [column-type refers-to primary-key?]} (get-in dna [table-name :columns column-name])]
+    (cond
+      refers-to
+      (column-predicate dna (first refers-to) (second refers-to))
 
-    (or (list 's/def
-              (keyword (format-table-name table-name) (name column-name))
+      (and (= :integer column-type) primary-key?)
+      (:integer-pk column-types)
 
-              (cond
-                refers-to
-                (last (column-spec  dna (first refers-to) (second refers-to)))
+      :else
+      (column-type column-types))))
 
-                (and (= :integer column-type) primary-key?)
-                (:integer-pk column-types)
+(defn table-spec-name
+  [table-name]
+  (keyword "record" (-> table-name
+                        ddg/singularize
+                        csk/->kebab-case-string)))
 
-                :else
-                (column-type column-types)))
-        (throw (ex-info "unknown column-type" {:column-type column-type})))))
+(defn column-spec-name
+  [table-name column-name]
+  (keyword (name table-name) (name column-name)))
+
+(defn column-specs
+  [dna table-dna]
+  (vec
+   (m/search table-dna
+     [?table-name {:columns {?column-name _}}]
+
+     (list 's/def
+           (column-spec-name ?table-name ?column-name)
+           (column-predicate dna ?table-name ?column-name)))))
+
+(defn table-spec
+  [table-dna]
+  (m/rewrite table-dna
+    [?table-name {:columns {& (m/seqable (m/or [!reqcn (m/pred (complement :nullable?))]
+                                               [!optcn (m/pred :nullable?)])
+                                         ...)}}]
+
+    ;; use cata to recur and remove empty :opt or :req
+    (m/cata
+     (s/def (m/app table-spec-name ?table-name)
+       (s/keys
+        ;; wrap :req and :opt in vectors to make empty checking easier
+        [:req [(m/app column-spec-name ?table-name !reqcn) ...]]
+        [:opt [(m/app column-spec-name ?table-name !optcn) ...]])))
+
+    ;; remove empty :opt or :req
+    (s/def ?spec-name
+      (s/keys & (m/gather [!req (m/pred seq !specs)])))
+    (s/def ?spec-name
+      (s/keys . !req !specs ...))))
 
 (defn generate
   [dna]
-  (reduce (fn [specs table-name]
-            (let [{:keys [columns]} (table-name dna)
-                  req-columns       (->> columns
-                                         (filter (fn [[_ {:keys [nullable?]}]] (not nullable?)))
-                                         (map first)
-                                         (map #(keyword (format-table-name table-name) (name %))))
-                  opt-columns       (->> columns
-                                         (filter (fn [[_ {:keys [nullable?]}]] nullable?))
-                                         (map first)
-                                         (map #(keyword (format-table-name table-name) (name %))))]
-              (-> (reduce (fn [specs column-name]
-                            (conj specs (column-spec dna table-name column-name)))
-                          specs
-                          (keys columns))
-                  (conj (list 's/def
-                              (keyword "record" (format-table-name table-name))
-                              (cond-> '[s/keys]
-                                (seq req-columns) (into [:req req-columns])
-                                (seq opt-columns) (into [:opt opt-columns])
-                                true              seq))))))
-          []
+  (mapcat (fn [table-name]
+            (let [table-dna [table-name (table-name dna)]]
+              (conj (column-specs dna table-dna)
+                    (table-spec table-dna))))
           (ddg/table-order dna)))
 
+
 (comment
-  (require '[meander.epsilon :as m])
-  (defn favorite-food-info [foods-by-name user]
-    (m/match {:user          user
-              :foods-by-name foods-by-name}
+  ;; keeper
+  (m/rewrite {:a {:m {}
+                  :n {}}
+              :b {:m {}
+                  :o {}}}
 
-      {:user          {:name          ?name
-                       :favorite-food {:name ?food}}
-       :foods-by-name {?food {:popularity ?popularity
-                              :calories   ?calories}}}
-      {:name     ?name
-       :favorite {:food       ?food
-                  :popularity ?popularity
-                  :calories   ?calories}}))
+    [?k (m/and (m/seqable !v ...) ?v2)]
+    [[?k !v] ... [?k & ?v2]]
 
-  (def foods-by-name
-    {:nachos   {:popularity :high
-                :calories   :lots}
-     :smoothie {:popularity :high
-                :calories   :less}})
-
-  (favorite-food-info foods-by-name
-                      {:name          :alice
-                       :favorite-food {:name :nachos}}))
+    (m/and {} (m/gather [!k (m/app keys !v)]))
+    (m/app into (m/cata [!k !v]) ...)))
