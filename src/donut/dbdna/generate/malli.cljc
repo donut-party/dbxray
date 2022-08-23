@@ -37,16 +37,16 @@
 
       ;; columns specs
       [?table-name
-       (m/and (m/seqable !col-name-1 ...)
-              (m/seqable !col-name-2 ...))
-       (m/seqable !col-dna ...)]
+       (m/and (m/seqable !col-names-1 ...)
+              (m/seqable !col-names-2 ...))
+       (m/seqable !col-dnas ...)]
       [:map .
-       [!col-name-1
-        {:optional? (m/app (comp boolean :nullable?) !col-dna)}
-        (m/app column-predicate ?table-name !col-name-2)] ...]
+       [!col-names-1
+        {:optional? (m/app (comp boolean :nullable?) !col-dnas)}
+        (m/app column-predicate ?table-name !col-names-2)] ...]
 
       ;; table spec
-      (m/and {} (m/gather [(m/and !tn-1 !tn-2) {:columns (m/and (m/app keys !col-names)
-                                                                (m/app vals !col-dna))}]))
-      [(def (m/app table-spec-name !tn-1)
-         (m/cata [!tn-2 !col-names !col-dna])) ...])))
+      (m/and {} (m/gather [(m/and !table-names-1 !table-names-2) {:columns (m/and (m/app keys !col-names)
+                                                                                  (m/app vals !col-dnas))}]))
+      [(def (m/app table-spec-name !table-names-1)
+         (m/cata [!table-names-2 !col-names !col-dnas])) ...])))
