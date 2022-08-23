@@ -1,8 +1,8 @@
 (ns donut.dbdna.generate.malli
   (:require
    [camel-snake-kebab.core :as csk]
-   [clojure.string :as str]
-   [donut.dbdna.generate :as ddg]))
+   [donut.dbdna.generate :as ddg]
+   [meander.epsilon :as m]))
 
 (def column-types
   {:integer    'int?
@@ -11,36 +11,42 @@
    :varchar    'string?
    :timestamp  'inst?})
 
-(defn column-spec
+(defn table-spec-name
+  [table-name]
+  (-> table-name
+      ddg/singularize
+      (csk/->PascalCaseSymbol table-name)))
+
+(defn column-predicate
   [dna table-name column-name]
-  (let [{:keys [column-type primary-key? nullable? refers-to]} (get-in dna [table-name :columns column-name])]
-    (or [column-name
-         {:optional? (boolean nullable?)}
+  (let [{:keys [column-type refers-to primary-key?]} (get-in dna [table-name :columns column-name])]
+    (cond
+      refers-to
+      (column-predicate dna (first refers-to) (second refers-to))
 
-         (cond
-           refers-to
-           (last (column-spec  dna (first refers-to) (second refers-to)))
+      (and (= :integer column-type) primary-key?)
+      (:integer-pk column-types)
 
-           (and (= :integer column-type) primary-key?)
-           (:integer-pk column-types)
-
-           :else
-           (column-type column-types))]
-        (throw (ex-info "unknown column-type" {:column-type column-type})))))
+      :else
+      (column-type column-types))))
 
 (defn generate
   [dna]
-  (reduce (fn [specs table-name]
-            (let [table-dna (table-name dna)]
-              (->> (reduce-kv (fn [spec column-name _]
-                                (conj spec (column-spec dna table-name column-name)))
-                              [:map]
-                              (:columns table-dna))
-                   (conj ['def (-> table-name
-                                   name
-                                   (str/replace #"s$" "")
-                                   csk/->PascalCaseSymbol)])
-                   seq
-                   (conj specs))))
-          []
-          (ddg/table-order dna)))
+  (let [column-predicate (partial column-predicate dna)]
+    (m/rewrite dna
+
+      ;; columns specs
+      [?table-name
+       (m/and (m/seqable !col-name-1 ...)
+              (m/seqable !col-name-2 ...))
+       (m/seqable !col-dna ...)]
+      [:map .
+       [!col-name-1
+        {:optional? (m/app (comp boolean :nullable?) !col-dna)}
+        (m/app column-predicate ?table-name !col-name-2)] ...]
+
+      ;; table spec
+      (m/and {} (m/gather [(m/and !tn-1 !tn-2) {:columns (m/and (m/app keys !col-names)
+                                                                (m/app vals !col-dna))}]))
+      [(def (m/app table-spec-name !tn-1)
+         (m/cata [!tn-2 !col-names !col-dna])) ...])))
