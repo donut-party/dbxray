@@ -4,25 +4,33 @@
    [donut.dbdna.generate :as ddg]
    [meander.epsilon :as m]))
 
-(def column-types
-  {:integer    'int?
-   :integer-pk 'nat-int?
-   :text       'string?
-   :varchar    'string?
-   :timestamp  'inst?})
-
 (defn column-predicate
   [dna table-name column-name]
-  (let [{:keys [column-type refers-to primary-key?]} (get-in dna [table-name :columns column-name])]
-    (cond
-      refers-to
-      (column-predicate dna (first refers-to) (second refers-to))
+  (m/rewrite {:dna         dna
+              :table-name  table-name
+              :column-name column-name}
 
-      (and (= :integer column-type) primary-key?)
-      (:integer-pk column-types)
+    ;; when there's a refers-to, recur using reference
+    {:dna         {?table-name {:columns {?column-name {:refers-to [?ref-table-name ?ref-column-name]}}}
+                   :as ?dna}
+     :table-name  ?table-name
+     :column-name ?column-name}
+    (m/cata {:dna         ?dna
+             :table-name  ?ref-table-name
+             :column-name ?ref-column-name})
 
-      :else
-      (column-type column-types))))
+    ;; get the column-dna
+    {:dna         {?table-name {:columns {?column-name ?column-dna}}}
+     :table-name  ?table-name
+     :column-name ?column-name}
+    (m/cata ?column-dna)
+
+    ;; all the different types
+    {:column-type :integer :primary-key? true} nat-int?
+    {:column-type :integer} int?
+    {:column-type :text} string?
+    {:column-type :varchar} string?
+    {:column-type :timestamp} inst?))
 
 (defn table-spec-name
   [table-name]
