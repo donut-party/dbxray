@@ -34,9 +34,7 @@
 
 (defn table-spec-name
   [table-name]
-  (keyword "record" (-> table-name
-                        ddg/singularize
-                        csk/->kebab-case-string)))
+  (keyword "record" (ddg/singularize table-name)))
 
 (defn column-spec-name
   [table-name column-name]

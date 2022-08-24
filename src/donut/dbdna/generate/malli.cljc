@@ -44,17 +44,13 @@
     (m/rewrite dna
 
       ;; columns specs
-      [?table-name
-       (m/and (m/seqable !col-names-1 ...)
-              (m/seqable !col-names-2 ...))
-       (m/seqable !col-dnas ...)]
+      [?table-name (m/seqable [(m/and !col-names !col-pred-names) !col-dnas] ...)]
       [:map .
-       [!col-names-1
+       [!col-names
         {:optional? (m/app (comp boolean :nullable?) !col-dnas)}
-        (m/app column-predicate ?table-name !col-names-2)] ...]
+        (m/app column-predicate ?table-name !col-pred-names)] ...]
 
       ;; table spec
-      (m/and {} (m/gather [(m/and !table-names-1 !table-names-2) {:columns (m/and (m/app keys !col-names)
-                                                                                  (m/app vals !col-dnas))}]))
-      [(def (m/app table-spec-name !table-names-1)
-         (m/cata [!table-names-2 !col-names !col-dnas])) ...])))
+      (m/and {} (m/seqable [(m/and !spec-names !col-table-names) {:columns !columns}] ...))
+      [(def (m/app table-spec-name !spec-names)
+         (m/cata [!col-table-names !columns])) ...])))
