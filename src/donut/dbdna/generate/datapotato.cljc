@@ -1,29 +1,8 @@
 (ns donut.dbdna.generate.datapotato
   (:require
    [camel-snake-kebab.core :as csk]
-   [donut.dbdna.generate :as ddg]
    [meander.epsilon :as m]
    [clojure.string :as str]))
-
-(defn generate
-  [dna])
-
-(require '[flatland.ordered.map :as omap])
-(def todo-list-dna
-  {:users      {:columns (omap/ordered-map
-                          :id       {:column-type  :integer
-                                     :primary-key? true}
-                          :username {:column-type :varchar})}
-   :todo_lists {:columns (omap/ordered-map
-                          :id            {:column-type  :integer
-                                          :primary-key? true}
-                          :created_by_id {:column-type :integer
-                                          :nullable?   true
-                                          :refers-to   [:users :id]})}})
-
-;; problems
-;; 1. include :relations iff a column has :refers-to
-;; 2. change map values
 
 (defn prefix
   [table-name]
@@ -32,21 +11,36 @@
        (apply str)
        (keyword)))
 
-(m/rewrite todo-list-dna
+(defn column-spec-name
+  [table-name column-name]
+  (keyword (name table-name) (name column-name)))
 
-  ;; match on table
-  (m/seqable [(m/and !table-names-1
-                     !table-names-2)
-              {:columns {& (m/seqable [!column-names !column-dnas] ..!column-counts)}}]
-             ...)
-  (m/app merge {!table-names-1 (m/app merge
-                                      {:prefix :f}
-                                      (m/cata [!column-names !column-dnas]) ..!column-counts)} ...)
+(defn relations-path
+  [[table-name column-name]]
+  [table-name (column-spec-name table-name column-name)])
 
-  ;; columns with a refers-to
-  [?column-name {:refers-to (m/pred identity ?reference)}]
-  {:relations {?column-name ?reference}}
+(defn generate
+  [dna]
+  ;; trying to get column names to be namespaced with table name
+  (m/rewrite dna
 
-  ;; columns without a refers-to
-  [?column-name {:refers-to (m/pred not)}]
-  nil)
+    ;; match on table
+    (m/seqable [(m/and !outer-table-names !inner-table-names (m/app prefix !prefixes))
+                {:columns !columns}]
+               ...)
+    (m/app merge {!outer-table-names (m/app merge
+                                            {:prefix !prefixes}
+                                            (m/cata [!inner-table-names !columns]))} ...)
+
+    ;; table-name / columns
+    [?table-name (m/seqable [!column-name !column-dna] ...)]
+    (m/app (partial merge-with merge) (m/cata [?table-name !column-name !column-dna]) ...)
+
+    ;; columns with a refers-to
+    [?table-name ?column-name {:refers-to (m/pred identity ?reference)}]
+    {:relations {(m/app column-spec-name ?table-name ?column-name)
+                 (m/app relations-path ?reference)}}
+
+    ;; columns without a refers-to
+    [?table-name ?column-name {:refers-to (m/pred not)}]
+    nil))
