@@ -1,6 +1,5 @@
 (ns donut.dbdna.generate.spec
   (:require
-   [camel-snake-kebab.core :as csk]
    [donut.dbdna.generate :as ddg]
    [meander.epsilon :as m]))
 

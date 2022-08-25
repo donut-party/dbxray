@@ -140,13 +140,6 @@
             {}
             tables)))
 
-(defmacro explore
-  [[binding db-spec] & body]
-  `(binding [njdf/*datafy-failure* :omit]
-     (let [~binding (-> ~db-spec
-                        (prep)
-                        :metadata)]
-       (datafy-result-set ~@body))))
 
 (comment
   (with-open [conn (jdbc/get-connection {:dbtype "sqlite" :dbname "sqlite.db"})]
@@ -159,4 +152,10 @@
      clojure.datafy/datafy
      ))
 
-  )
+  (defmacro explore
+    [[binding db-spec] & body]
+    `(binding [njdf/*datafy-failure* :omit]
+       (let [~binding (-> ~db-spec
+                          (prep)
+                          :metadata)]
+         (datafy-result-set ~@body)))))
