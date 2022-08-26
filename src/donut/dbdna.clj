@@ -121,7 +121,8 @@
                                       seq)]
                 (assoc cols-map
                        (keyword column_name)
-                       (cond-> {:column-type (adapt-column-type (-> type_name str/lower-case) column-types)}
+                       (cond-> {:column-type (adapt-column-type (-> type_name str/lower-case) column-types)
+                                :raw-column-type type_name}
                          nullable?    (assoc :nullable? true)
                          primary-key? (assoc :primary-key? true)
                          unique?      (assoc :unique? true)

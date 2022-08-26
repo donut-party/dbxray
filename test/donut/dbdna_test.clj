@@ -1,9 +1,10 @@
 (ns donut.dbdna-test
   (:require
-   [clojure.test :refer [deftest is use-fixtures testing]]
+   [clojure.string :as str]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [donut.dbdna :as dbd]
-   [next.jdbc :as jdbc]
-   [clojure.string :as str])
+   [matcher-combinators.test]
+   [next.jdbc :as jdbc])
   (:import
    (io.zonky.test.db.postgres.embedded EmbeddedPostgres)))
 
@@ -15,6 +16,7 @@
 (def ^:private test-sqlite-fs {:dbtype "sqlite" :dbname "sqlite.db"})
 (def ^:private test-mysql {:dbtype "mysql" :dbname "dbdna_test" :user "root"})
 
+(def ^:dynamic *dbtype*)
 
 (def test-dbspecs
   [test-postgres
@@ -24,21 +26,20 @@
 
 (defn build-stmt
   "helper to vary sql by db type"
-  [conn stmt-parts]
-  (let [dbtype (dbd/database-product-name (.getMetaData conn))]
-    [(->> stmt-parts
-          (filter (fn [part]
-                    (or (string? part)
-                        (let [[rule dbtypes] part]
-                          (or (and (= :exclude rule) (not (dbtypes dbtype)))
-                              (and (= :include rule) (dbtypes dbtype)))))))
-          (map (fn [part] (if (string? part) part (last part))))
-          (str/join ""))]))
+  [stmt-parts]
+  [(->> stmt-parts
+        (filter (fn [part]
+                  (or (string? part)
+                      (let [[rule dbtypes] part]
+                        (or (and (= :exclude rule) (not (dbtypes *dbtype*)))
+                            (and (= :include rule) (dbtypes *dbtype*)))))))
+        (map (fn [part] (if (string? part) part (last part))))
+        (str/join ""))])
 
 (defn execute-many!
   [conn stmts]
   (doseq [stmt stmts]
-    (jdbc/execute! conn (build-stmt conn stmt))))
+    (jdbc/execute! conn (build-stmt stmt))))
 
 (defn create-tables
   [conn]
@@ -64,12 +65,9 @@
      "   todo_list_id INTEGER,"
      "   todo_title varchar(256) NOT NULL,"
      "   notes text,"
-     "   created_by_id INTEGER,"
      "   completed_at TIMESTAMP NULL,"
      "   FOREIGN KEY(todo_list_id)"
-     "     REFERENCES todo_lists(id),"
-     "   FOREIGN KEY(created_by_id)"
-     "     REFERENCES users(id)"
+     "     REFERENCES todo_lists(id)"
      ")"]]))
 
 (defn create-multi-fk-tables
@@ -99,41 +97,70 @@
     (if (= "embedded-postgres" (:dbtype db))
       (reset! test-dbconn (jdbc/get-connection (.getPostgresDatabase ^EmbeddedPostgres @embedded-pg)))
       (reset! test-dbconn (jdbc/get-connection db)))
-    (try
-      (create-tables @test-dbconn)
-      (testing (str "db: " db)
-        (t))
-      (finally (.close @test-dbconn)))))
+    (binding [*dbtype* (dbd/database-product-name (.getMetaData @test-dbconn))]
+      (try
+        (create-tables @test-dbconn)
+        (testing (str "db: " db)
+          (t))
+        (finally (.close @test-dbconn))))))
 
 (use-fixtures :each with-test-db)
 
+(defn match-pair
+  [result-name [dbtype match]]
+  `(when (= *dbtype* ~dbtype)
+     (is (~'match? ~match ~result-name))))
+
+(defmacro match-when-dbtype
+  [result & pairs]
+  (let [result-name (gensym result)]
+    `(let [~result-name ~result]
+       ~@(map #(match-pair result-name %) pairs))))
+
 (deftest returns-tables
-  (is (= {:users      {:columns {:id       {:column-type  :integer
-                                            :primary-key? true
-                                            :unique?      true}
-                                 :username {:column-type :varchar
-                                            :unique?     true}}}
-          :todo_lists {:columns {:id            {:column-type  :integer
-                                                 :primary-key? true
-                                                 :unique?      true}
-                                 :created_by_id {:column-type :integer
-                                                 :nullable?   true
-                                                 :refers-to   [:users :id]}}}
-          :todos      {:columns {:id            {:column-type  :integer
-                                                 :primary-key? true
-                                                 :unique?      true}
-                                 :todo_list_id  {:column-type :integer
-                                                 :nullable?   true
-                                                 :refers-to   [:todo_lists :id]}
-                                 :todo_title    {:column-type :varchar}
-                                 :notes         {:column-type :text
-                                                 :nullable?   true}
-                                 :created_by_id {:column-type :integer
-                                                 :nullable?   true
-                                                 :refers-to   [:users :id]}
-                                 :completed_at  {:column-type :timestamp
-                                                 :nullable?   true}}}}
-         (dbd/dna @test-dbconn))))
+  (let [dna (dbd/dna @test-dbconn)]
+    (is (match? {:users      {:columns {:id       {:column-type  :integer
+                                                   :primary-key? true
+                                                   :unique?      true}
+                                        :username {:column-type :varchar
+                                                   :unique?     true}}}
+                 :todo_lists {:columns {:id            {:column-type  :integer
+                                                        :primary-key? true
+                                                        :unique?      true}
+                                        :created_by_id {:column-type :integer
+                                                        :nullable?   true
+                                                        :refers-to   [:users :id]}}}
+                 :todos      {:columns {:id            {:column-type  :integer
+                                                        :primary-key? true
+                                                        :unique?      true}
+                                        :todo_list_id  {:column-type :integer
+                                                        :nullable?   true
+                                                        :refers-to   [:todo_lists :id]}
+                                        :todo_title    {:column-type :varchar}
+                                        :notes         {:column-type :text
+                                                        :nullable?   true}
+                                        :completed_at  {:column-type :timestamp
+                                                        :nullable?   true}}}}
+                dna))
+
+    (match-when-dbtype
+     dna
+     [:postgresql {:users      {:columns {:id {:raw-column-type "int4"}}}
+                   :todo_lists {:columns {:id            {:raw-column-type "int4"}
+                                          :created_by_id {:raw-column-type "int4"}}}
+                   :todos      {:columns {:id            {:raw-column-type "int4"}
+                                          :todo_list_id  {:raw-column-type "int4"}}}}]
+
+     [:mysql {:users      {:columns {:id {:raw-column-type "INT"}}}
+              :todo_lists {:columns {:id            {:raw-column-type "INT"}
+                                     :created_by_id {:raw-column-type "INT"}}}
+              :todos      {:columns {:id            {:raw-column-type "INT"}
+                                     :todo_list_id  {:raw-column-type "INT"}}}}]
+     [:sqlite {:users      {:columns {:id {:raw-column-type "INTEGER"}}}
+               :todo_lists {:columns {:id            {:raw-column-type "INTEGER"}
+                                      :created_by_id {:raw-column-type "INTEGER"}}}
+               :todos      {:columns {:id            {:raw-column-type "INTEGER"}
+                                      :todo_list_id  {:raw-column-type "INTEGER"}}}}])))
 
 (comment
   (do
