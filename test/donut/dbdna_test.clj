@@ -130,37 +130,50 @@
                                         :created_by_id {:column-type :integer
                                                         :nullable?   true
                                                         :refers-to   [:users :id]}}}
-                 :todos      {:columns {:id            {:column-type  :integer
-                                                        :primary-key? true
-                                                        :unique?      true}
-                                        :todo_list_id  {:column-type :integer
-                                                        :nullable?   true
-                                                        :refers-to   [:todo_lists :id]}
-                                        :todo_title    {:column-type :varchar}
-                                        :notes         {:column-type :text
-                                                        :nullable?   true}
-                                        :completed_at  {:column-type :timestamp
-                                                        :nullable?   true}}}}
+                 :todos      {:columns {:id           {:column-type  :integer
+                                                       :primary-key? true
+                                                       :unique?      true}
+                                        :todo_list_id {:column-type :integer
+                                                       :nullable?   true
+                                                       :refers-to   [:todo_lists :id]}
+                                        :todo_title   {:column-type :varchar}
+                                        :notes        {:column-type :text
+                                                       :nullable?   true}
+                                        :completed_at {:column-type :timestamp
+                                                       :nullable?   true}}}}
                 dna))
 
     (match-when-dbtype
      dna
-     [:postgresql {:users      {:columns {:id {:raw-column-type "int4"}}}
+     [:postgresql {:users      {:columns {:id       {:raw-column-type "int4"}
+                                          :username {:raw-column-type "varchar"}}}
                    :todo_lists {:columns {:id            {:raw-column-type "int4"}
                                           :created_by_id {:raw-column-type "int4"}}}
-                   :todos      {:columns {:id            {:raw-column-type "int4"}
-                                          :todo_list_id  {:raw-column-type "int4"}}}}]
+                   :todos      {:columns {:id           {:raw-column-type "int4"}
+                                          :todo_list_id {:raw-column-type "int4"}
+                                          :todo_title   {:raw-column-type "varchar"}
+                                          :notes        {:raw-column-type "text"}
+                                          :completed_at {:raw-column-type "timestamp"}}}}]
 
-     [:mysql {:users      {:columns {:id {:raw-column-type "INT"}}}
+     [:mysql {:users      {:columns {:id       {:raw-column-type "INT"}
+                                     :username {:raw-column-type "VARCHAR"}}}
               :todo_lists {:columns {:id            {:raw-column-type "INT"}
                                      :created_by_id {:raw-column-type "INT"}}}
-              :todos      {:columns {:id            {:raw-column-type "INT"}
-                                     :todo_list_id  {:raw-column-type "INT"}}}}]
-     [:sqlite {:users      {:columns {:id {:raw-column-type "INTEGER"}}}
+              :todos      {:columns {:id           {:raw-column-type "INT"}
+                                     :todo_list_id {:raw-column-type "INT"}
+                                     :todo_title   {:raw-column-type "VARCHAR"}
+                                     :notes        {:raw-column-type "TEXT"}
+                                     :completed_at {:raw-column-type "TIMESTAMP"}}}}]
+
+     [:sqlite {:users      {:columns {:id       {:raw-column-type "INTEGER"}
+                                      :username {:raw-column-type "VARCHAR(256)"}}}
                :todo_lists {:columns {:id            {:raw-column-type "INTEGER"}
                                       :created_by_id {:raw-column-type "INTEGER"}}}
-               :todos      {:columns {:id            {:raw-column-type "INTEGER"}
-                                      :todo_list_id  {:raw-column-type "INTEGER"}}}}])))
+               :todos      {:columns {:id           {:raw-column-type "INTEGER"}
+                                      :todo_list_id {:raw-column-type "INTEGER"}
+                                      :todo_title   {:raw-column-type "VARCHAR(256)"}
+                                      :notes        {:raw-column-type "TEXT"}
+                                      :completed_at {:raw-column-type "TIMESTAMP"}}}}])))
 
 (comment
   (do
