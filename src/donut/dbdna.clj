@@ -140,7 +140,6 @@
             {}
             tables)))
 
-
 (comment
   (with-open [conn (jdbc/get-connection {:dbtype "sqlite" :dbname "sqlite.db"})]
     (clojure.datafy/nav (clojure.datafy/datafy (.getMetaData conn)) :schemas nil))

@@ -11,7 +11,7 @@
 
     ;; when there's a refers-to, recur using reference
     {:dna         {?table-name {:columns {?column-name {:refers-to [?ref-table-name ?ref-column-name]}}}
-                   :as ?dna}
+                   :as         ?dna}
      :table-name  ?table-name
      :column-name ?column-name}
     (m/cata {:dna         ?dna
@@ -52,9 +52,9 @@
 (defn table-spec
   [table-dna]
   (m/rewrite table-dna
-    [?table-name {:columns {& (m/seqable (m/or [!reqcn (m/pred (complement :nullable?))]
-                                               [!optcn (m/pred :nullable?)])
-                                         ...)}}]
+    [?table-name {:columns (m/seqable (m/or [!reqcn (m/pred (complement :nullable?))]
+                                            [!optcn (m/pred :nullable?)])
+                                      ...)}]
 
     ;; use cata to recur and remove empty :opt or :req
     (m/cata
@@ -77,17 +77,3 @@
               (conj (column-specs dna table-dna)
                     (table-spec table-dna))))
           (ddg/table-order dna)))
-
-
-(comment
-  ;; keeper
-  (m/rewrite {:a {:m {}
-                  :n {}}
-              :b {:m {}
-                  :o {}}}
-
-    [?k (m/and (m/seqable !v ...) ?v2)]
-    [[?k !v] ... [?k & ?v2]]
-
-    (m/and {} (m/gather [!k (m/app keys !v)]))
-    (m/app into (m/cata [!k !v]) ...)))

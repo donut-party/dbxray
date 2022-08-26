@@ -10,7 +10,7 @@
            (s/def :record/user (s/keys :req [:users/id :users/username]))
            (s/def :todo_lists/id nat-int?)
            (s/def :todo_lists/created_by_id nat-int?)
-           (s/def :record/todo-list
+           (s/def :record/todo_list
              (s/keys :req [:todo_lists/id]
                      :opt [:todo_lists/created_by_id]))
            (s/def :todos/id nat-int?)

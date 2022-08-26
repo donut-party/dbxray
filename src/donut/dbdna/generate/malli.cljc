@@ -10,6 +10,10 @@
       ddg/singularize
       (csk/->PascalCaseSymbol table-name)))
 
+(defn column-spec-name
+  [table-name column-name]
+  (keyword (name table-name) (name column-name)))
+
 (defn column-predicate
   [dna table-name column-name]
   (m/rewrite {:dna         dna
@@ -46,7 +50,7 @@
       ;; columns specs
       [?table-name (m/seqable [(m/and !col-names !col-pred-names) !col-dnas] ...)]
       [:map .
-       [!col-names
+       [(m/app column-spec-name ?table-name !col-names)
         {:optional? (m/app (comp boolean :nullable?) !col-dnas)}
         (m/app column-predicate ?table-name !col-pred-names)] ...]
 
