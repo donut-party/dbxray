@@ -6,6 +6,7 @@
 .cpcache
 .lein*
 .nrepl*
+dbdna_test.*
 sqlite.db
 target
 tmp

@@ -8,8 +8,9 @@
   (:import
    (io.zonky.test.db.postgres.embedded EmbeddedPostgres)))
 
-(def test-dbconn (atom nil))
 (defonce embedded-pg (future (EmbeddedPostgres/start)))
+(def ^:dynamic *dbtype*)
+(def ^:dynamic *dbconn*)
 
 
 (def ^:private test-h2         {:dbtype "h2" :dbname "dbdna_test" :user "root"})
@@ -18,17 +19,6 @@
 (def ^:private test-postgres   {:dbtype "embedded-postgres" :dbname "dbdna_test"})
 (def ^:private test-sqlite-mem {:dbtype "sqlite" :connection-uri "jdbc:sqlite::memory:"})
 (def ^:private test-sqlite-fs  {:dbtype "sqlite" :dbname "sqlite.db"})
-
-(def ^:dynamic *dbtype*)
-
-(def test-dbspecs
-  [#_#_
-   test-h2
-   test-hsql
-   test-mysql
-   test-postgres
-   test-sqlite-mem
-   test-sqlite-fs])
 
 (defn build-stmt
   "helper to vary sql by db type"
@@ -57,7 +47,7 @@
   (execute-many!
    conn
    [["CREATE TABLE parent_records ("
-     "  id           integer PRIMARY KEY NOT NULL UNIQUE,"
+     "  id           integer NOT NULL PRIMARY KEY UNIQUE,"
      "  varchar_ex   varchar(256) NOT NULL UNIQUE,"
      "  text_ex      text,"
      "  timestamp_ex TIMESTAMP NULL"
@@ -69,72 +59,85 @@
      "    REFERENCES parent_records(id)"
      ")"]]))
 
-(defn with-test-db
-  [t]
-  (doseq [db test-dbspecs]
-    (if (= "embedded-postgres" (:dbtype db))
-      (reset! test-dbconn (jdbc/get-connection (.getPostgresDatabase ^EmbeddedPostgres @embedded-pg)))
-      (reset! test-dbconn (jdbc/get-connection db)))
-    (binding [*dbtype* (dbd/database-product-name (.getMetaData @test-dbconn))]
-      (try
-        (create-tables @test-dbconn)
-        (testing (str "db: " db)
-          (t))
-        (finally (.close @test-dbconn))))))
+(defmacro with-test-db
+  [test-db & body]
+  `(let [test-db# ~test-db]
+     (with-open [test-db# (if (= "embedded-postgres" (:dbtype test-db#))
+                            (jdbc/get-connection (.getPostgresDatabase ^EmbeddedPostgres @embedded-pg))
+                            (jdbc/get-connection test-db#))]
+       (binding [*dbtype* (dbd/database-product-name (.getMetaData test-db#))
+                 *dbconn* test-db#]
+         (create-tables test-db#)
+         (testing (str "db: " test-db#)
+           ~@body)))))
 
-(use-fixtures :each with-test-db)
+;; Copied verbatim from the defunct clojure-contrib (http://bit.ly/deep-merge-with)
+(defn deep-merge-with [f & maps]
+  (apply
+   (fn m [& maps]
+     (if (every? map? maps)
+       (apply merge-with m maps)
+       (apply f maps)))
+   maps))
 
-(defn match-pair
-  [result-name [dbtype match]]
-  `(when (= *dbtype* ~dbtype)
-     (is (~'match? ~match ~result-name))))
+(def deep-merge (partial deep-merge-with merge))
 
-(defmacro match-when-dbtype
-  [result & pairs]
-  (let [result-name (gensym result)]
-    `(let [~result-name ~result]
-       ~@(map #(match-pair result-name %) pairs))))
+(def typical-core-result
+  {:parent_records {:columns {:id           {:column-type  :integer
+                                             :primary-key? true
+                                             :unique?      true}
+                              :varchar_ex   {:column-type :varchar
+                                             :unique?     true}
+                              :text_ex      {:column-type :text
+                                             :nullable?   true}
+                              :timestamp_ex {:column-type :timestamp
+                                             :nullable?   true}}}
+   :child_records  {:columns {:id    {:column-type  :integer
+                                      :primary-key? true
+                                      :unique?      true}
+                              :fk_id {:column-type :integer
+                                      :refers-to   [:parent_records :id]}}}})
 
-(deftest returns-tables
-  (let [dna (dbd/dna @test-dbconn)]
-    (is (match? {:parent_records {:columns {:id           {:column-type  :integer
-                                                           :primary-key? true
-                                                           :unique?      true}
-                                            :varchar_ex   {:column-type :varchar
-                                                           :unique?     true}
-                                            :text_ex      {:column-type :text
-                                                           :nullable?   true}
-                                            :timestamp_ex {:column-type :timestamp
-                                                           :nullable?   true}}}
-                 :child_records  {:columns {:id    {:column-type  :integer
-                                                    :primary-key? true
-                                                    :unique?      true}
-                                            :fk_id {:column-type :integer
-                                                    :refers-to   [:parent_records :id]}}}}
-                dna))
+(defn test-result
+  [test-db result-extras]
+  (with-test-db test-db
+    (is (= (deep-merge typical-core-result result-extras)
+           (dbd/dna *dbconn*)))))
 
-    (match-when-dbtype
-     dna
-     [:postgresql {:parent_records {:columns {:id           {:raw-column-type "int4"}
-                                              :varchar_ex   {:raw-column-type "varchar"}
-                                              :text_ex      {:raw-column-type "text"}
-                                              :timestamp_ex {:raw-column-type "timestamp"}}}
-                   :child_records  {:columns {:id    {:raw-column-type "int4"}
-                                              :fk_id {:raw-column-type "int4"}}}}]
+(deftest postgresql-test
+  (test-result test-postgres
+               {:parent_records {:columns {:id           {:raw-column-type "int4"}
+                                           :varchar_ex   {:raw-column-type "varchar"}
+                                           :text_ex      {:raw-column-type "text"}
+                                           :timestamp_ex {:raw-column-type "timestamp"}}}
+                :child_records  {:columns {:id    {:raw-column-type "int4"}
+                                           :fk_id {:raw-column-type "int4"}}}}))
 
-     [:mysql {:parent_records {:columns {:id           {:raw-column-type "INT"}
-                                         :varchar_ex   {:raw-column-type "VARCHAR"}
-                                         :text_ex      {:raw-column-type "TEXT"}
-                                         :timestamp_ex {:raw-column-type "TIMESTAMP"}}}
-              :child_records  {:columns {:id    {:raw-column-type "INT"}
-                                         :fk_id {:raw-column-type "INT"}}}}]
+(deftest mysql-test
+  (test-result test-mysql
+               {:parent_records {:columns {:id           {:raw-column-type "INT"}
+                                           :varchar_ex   {:raw-column-type "VARCHAR"}
+                                           :text_ex      {:raw-column-type "TEXT"}
+                                           :timestamp_ex {:raw-column-type "TIMESTAMP"}}}
+                :child_records  {:columns {:id    {:raw-column-type "INT"}
+                                           :fk_id {:raw-column-type "INT"}}}}))
 
-     [:sqlite {:parent_records {:columns {:id           {:raw-column-type "INTEGER"}
-                                          :varchar_ex   {:raw-column-type "VARCHAR(256)"}
-                                          :text_ex      {:raw-column-type "TEXT"}
-                                          :timestamp_ex {:raw-column-type "TIMESTAMP"}}}
-               :child_records  {:columns {:id    {:raw-column-type "INTEGER"}
-                                          :fk_id {:raw-column-type "INTEGER"}}}}])))
+(deftest sqlite-test
+  (test-result test-sqlite-fs
+               {:parent_records {:columns {:id           {:raw-column-type "INTEGER"}
+                                           :varchar_ex   {:raw-column-type "VARCHAR(256)"}
+                                           :text_ex      {:raw-column-type "TEXT"}
+                                           :timestamp_ex {:raw-column-type "TIMESTAMP"}}}
+                :child_records  {:columns {:id    {:raw-column-type "INTEGER"}
+                                           :fk_id {:raw-column-type "INTEGER"}}}})
+
+  (test-result test-sqlite-mem
+               {:parent_records {:columns {:id           {:raw-column-type "INTEGER"}
+                                           :varchar_ex   {:raw-column-type "VARCHAR(256)"}
+                                           :text_ex      {:raw-column-type "TEXT"}
+                                           :timestamp_ex {:raw-column-type "TIMESTAMP"}}}
+                :child_records  {:columns {:id    {:raw-column-type "INTEGER"}
+                                           :fk_id {:raw-column-type "INTEGER"}}}}))
 
 
 (comment
