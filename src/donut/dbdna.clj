@@ -106,9 +106,9 @@
   [{{:keys [predicates column-types]} :dbadapter :as dbmd}
    table-name
    table-cols]
-  (let [fks (group-by :fkcolumn_name (get-foreign-keys dbmd table-name))
-        pks (group-by :column_name (get-primary-keys dbmd table-name))
-        ixs (group-by :column_name (get-index-info dbmd table-name))]
+  (let [fks (->> (get-foreign-keys table-name dbmd) (group-by :fkcolumn_name))
+        pks (->> (get-primary-keys table-name dbmd) (group-by :column_name))
+        ixs (->> (get-index-info table-name dbmd)   (group-by :column_name))]
     (reduce (fn [cols-map {:keys [column_name is_nullable type_name] :as _col}]
               (let [fk-ref       (some->> (get fks column_name)
                                           first
