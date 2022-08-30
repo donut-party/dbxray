@@ -1,8 +1,8 @@
-(ns donut.dbdna.generate.spec-test
+(ns donut.dbxray.generate.spec-test
   (:require
    [clojure.test :refer [deftest is]]
-   [donut.dbdna.fixtures :as ddf]
-   [donut.dbdna.generate.spec :as ddgs]))
+   [donut.dbxray.fixtures :as ddf]
+   [donut.dbxray.generate.spec :as ddgs]))
 
 (deftest generates-spec-specs
   (is (= '[(s/def :user/id nat-int?)

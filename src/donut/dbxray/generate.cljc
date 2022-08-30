@@ -1,4 +1,4 @@
-(ns donut.dbdna.generate
+(ns donut.dbxray.generate
   (:require
    [clojure.string :as str]
    [weavejester.dependency :as dep]))

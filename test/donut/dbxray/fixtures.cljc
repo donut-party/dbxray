@@ -1,4 +1,4 @@
-(ns donut.dbdna.fixtures
+(ns donut.dbxray.fixtures
   (:require [flatland.ordered.map :as omap]))
 
 (def todo-list-dna

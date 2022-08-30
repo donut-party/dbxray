@@ -1,7 +1,6 @@
 {:paths ["src"]
  :deps  {camel-snake-kebab/camel-snake-kebab {:mvn/version "0.4.3"}
          com.github.seancorfield/next.jdbc   {:mvn/version "1.2.737"}
-         meander/epsilon                     {:mvn/version "0.0.650"}
          org.flatland/ordered                {:mvn/version "1.15.10"}
          weavejester/dependency              {:mvn/version "0.2.1"}}
 
@@ -18,8 +17,7 @@
                  org.hsqldb/hsqldb                                              {:mvn/version "2.5.0"}
                  com.h2database/h2                                              {:mvn/version "1.4.200"}
                  org.postgresql/postgresql                                      {:mvn/version "42.3.1"}
-                 org.xerial/sqlite-jdbc                                         {:mvn/version "3.39.2.0"}
-                 nubank/matcher-combinators                                     {:mvn/version "3.5.1"}}
+                 org.xerial/sqlite-jdbc                                         {:mvn/version "3.39.2.0"}}
    :exec-fn cognitect.test-runner.api/test}
 
   :build

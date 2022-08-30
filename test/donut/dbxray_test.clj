@@ -1,9 +1,8 @@
-(ns donut.dbdna-test
+(ns donut.dbxray-test
   (:require
    [clojure.string :as str]
-   [clojure.test :refer [deftest is testing use-fixtures]]
-   [donut.dbdna :as dbd]
-   [matcher-combinators.test]
+   [clojure.test :refer [deftest is testing]]
+   [donut.dbxray :as dbx]
    [next.jdbc :as jdbc])
   (:import
    (io.zonky.test.db.postgres.embedded EmbeddedPostgres)))
@@ -73,11 +72,6 @@
                                            "    REFERENCES parent_records(id)"
                                            ")"]]})
 
-(comment "to try out table creation"
-         (let [dbconf test-hsql]
-           (with-open [conn (jdbc/get-connection dbconf)]
-             (create-tables conn (:create-tables dbconf)))))
-
 ;;---
 ;; helpers
 ;;---
@@ -95,6 +89,11 @@
       (catch Exception _)))
   (execute-many! conn create-table-statements))
 
+(comment "to try out table creation"
+         (let [dbconf test-hsql]
+           (with-open [conn (jdbc/get-connection dbconf)]
+             (create-tables conn (:create-tables dbconf)))))
+
 (defmacro with-test-db
   [test-db & body]
   `(let [test-db-def# ~test-db
@@ -102,7 +101,7 @@
      (with-open [test-db# (if (= "embedded-postgres" (:dbtype test-db#))
                             (jdbc/get-connection (.getPostgresDatabase ^EmbeddedPostgres @embedded-pg))
                             (jdbc/get-connection test-db#))]
-       (binding [*dbtype* (dbd/database-product-name (.getMetaData test-db#))
+       (binding [*dbtype* (dbx/database-product-name (.getMetaData test-db#))
                  *dbconn* test-db#]
          (create-tables test-db# (:create-tables test-db-def#))
          (testing (str "db: " test-db#)
@@ -140,7 +139,7 @@
   [test-db result-extras]
   (with-test-db test-db
     (is (= (deep-merge typical-core-result result-extras)
-           (dbd/dna *dbconn*)))))
+           (dbx/xray *dbconn*)))))
 
 
 ;;---
@@ -208,7 +207,7 @@
                                        :FK_ID {:column-type     :integer
                                                :refers-to       [:PARENT_RECORDS :ID]
                                                :raw-column-type "INTEGER"}}}}
-           (dbd/dna *dbconn*)))))
+           (dbx/xray *dbconn*)))))
 
 (deftest hsql-test
   (with-test-db test-hsql
@@ -232,4 +231,4 @@
                                        :FK_ID {:column-type     :integer
                                                :refers-to       [:PARENT_RECORDS :ID]
                                                :raw-column-type "INTEGER"}}}}
-           (dbd/dna *dbconn*)))))
+           (dbx/xray *dbconn*)))))

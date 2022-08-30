@@ -1,4 +1,4 @@
-(ns donut.dbdna
+(ns donut.dbxray
   (:require
    [clojure.datafy :as df]
    [clojure.string :as str]
@@ -105,9 +105,9 @@
   [{{:keys [predicates column-types]} :dbadapter :as dbmd}
    table-name
    table-cols]
-  (let [fks (->> (get-foreign-keys table-name dbmd) (group-by :fkcolumn_name))
-        pks (->> (get-primary-keys table-name dbmd) (group-by :column_name))
-        ixs (->> (get-index-info table-name dbmd)   (group-by :column_name))]
+  (let [fks (->> (get-foreign-keys dbmd table-name) (group-by :fkcolumn_name))
+        pks (->> (get-primary-keys dbmd table-name) (group-by :column_name))
+        ixs (->> (get-index-info dbmd table-name)   (group-by :column_name))]
     (reduce (fn [cols-map {:keys [column_name is_nullable type_name] :as _col}]
               (let [fk-ref       (some->> (get fks column_name)
                                           first
@@ -129,7 +129,7 @@
             (omap/ordered-map)
             table-cols)))
 
-(defn dna
+(defn xray
   [conn]
   (let [dbmd    (prep conn)
         tables  (get-tables dbmd)

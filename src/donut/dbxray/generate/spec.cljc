@@ -1,7 +1,7 @@
-(ns donut.dbdna.generate.spec
+(ns donut.dbxray.generate.spec
   (:require
    [camel-snake-kebab.core :as csk]
-   [donut.dbdna.generate :as ddg]))
+   [donut.dbxray.generate :as ddg]))
 
 (def column-types
   {:integer    'pos-int?
@@ -58,28 +58,3 @@
                                 true              seq))))))
           []
           (ddg/table-order dna)))
-
-(comment
-  (require '[meander.epsilon :as m])
-  (defn favorite-food-info [foods-by-name user]
-    (m/match {:user          user
-              :foods-by-name foods-by-name}
-
-      {:user          {:name          ?name
-                       :favorite-food {:name ?food}}
-       :foods-by-name {?food {:popularity ?popularity
-                              :calories   ?calories}}}
-      {:name     ?name
-       :favorite {:food       ?food
-                  :popularity ?popularity
-                  :calories   ?calories}}))
-
-  (def foods-by-name
-    {:nachos   {:popularity :high
-                :calories   :lots}
-     :smoothie {:popularity :high
-                :calories   :less}})
-
-  (favorite-food-info foods-by-name
-                      {:name          :alice
-                       :favorite-food {:name :nachos}}))

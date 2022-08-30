@@ -1,8 +1,8 @@
-(ns donut.dbdna.generate.malli
+(ns donut.dbxray.generate.malli
   (:require
    [camel-snake-kebab.core :as csk]
    [clojure.string :as str]
-   [donut.dbdna.generate :as ddg]))
+   [donut.dbxray.generate :as ddg]))
 
 (def column-types
   {:integer    'pos-int?

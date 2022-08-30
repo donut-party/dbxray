@@ -1,8 +1,8 @@
-(ns donut.dbdna.generate.malli-test
+(ns donut.dbxray.generate.malli-test
   (:require
    [clojure.test :refer [deftest is]]
-   [donut.dbdna.generate.malli :as ddgm]
-   [donut.dbdna.fixtures :as ddf]))
+   [donut.dbxray.generate.malli :as ddgm]
+   [donut.dbxray.fixtures :as ddf]))
 
 (deftest generates-malli-specs
   (is (= '[(def User
