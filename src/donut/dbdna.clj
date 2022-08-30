@@ -7,7 +7,6 @@
    [next.jdbc.datafy :as njdf]
    [next.jdbc.result-set :as njrs]))
 
-
 (def default-adapter
   {:schema-pattern nil
    :column-types   {#"int" :integer}
