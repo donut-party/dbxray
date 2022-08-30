@@ -140,15 +140,15 @@
             {}
             tables)))
 
-(defmacro explore
-  [[binding db-spec] & body]
-  `(binding [njdf/*datafy-failure* :omit]
-     (let [~binding (-> ~db-spec
-                        (prep)
-                        :metadata)]
-       (datafy-result-set ~@body))))
-
 (comment
+  (defmacro explore
+    [[binding db-spec] & body]
+    `(binding [njdf/*datafy-failure* :omit]
+       (let [~binding (-> ~db-spec
+                          (prep)
+                          :metadata)]
+         (datafy-result-set ~@body))))
+
   (with-open [conn (jdbc/get-connection {:dbtype "sqlite" :dbname "sqlite.db"})]
     (clojure.datafy/nav (clojure.datafy/datafy (.getMetaData conn)) :schemas nil))
 
@@ -157,6 +157,4 @@
      (.getMetaData conn)
      (.getTables nil nil nil nil)
      clojure.datafy/datafy
-     ))
-
-  )
+     )))
