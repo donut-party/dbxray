@@ -42,7 +42,6 @@
       str/lower-case
       keyword))
 
-
 (defn prep
   [conn]
   (let [metadata (.getMetaData conn)
