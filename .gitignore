@@ -3,6 +3,7 @@
 *cider-repl*
 .DS_Store
 .cache
+.clj-kondo
 .cpcache
 .lein*
 .nrepl*
