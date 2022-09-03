@@ -56,6 +56,8 @@
       (njrs/datafiable-result-set nil {:builder-fn njrs/as-unqualified-lower-maps})
       df/datafy))
 
+;; see https://docs.oracle.com/javase/8/docs/api/java/sql/DatabaseMetaData.html
+
 (defn get-index-info
   [{:keys [metadata dbadapter]} & [table-name]]
   (binding [njdf/*datafy-failure* :omit]
