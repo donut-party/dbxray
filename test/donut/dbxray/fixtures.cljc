@@ -1,7 +1,7 @@
 (ns donut.dbxray.fixtures
   (:require [flatland.ordered.map :as omap]))
 
-(def todo-list-dna
+(def todo-list-xray
   {:users      {:columns (omap/ordered-map
                           :id       {:column-type  :integer
                                      :primary-key? true

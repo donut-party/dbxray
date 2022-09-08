@@ -4,8 +4,8 @@
    [donut.dbxray.generate :as ddg]))
 
 (def column-types
-  {:integer    'pos-int?
-   :integer-pk 'nat-int?
+  {:integer    'int?
+   :integer-pk 'pos-int?
    :text       'string?
    :varchar    'string?
    :timestamp  'inst?})
@@ -17,15 +17,15 @@
       csk/->kebab-case-string))
 
 (defn column-spec
-  [dna table-name column-name]
-  (let [{:keys [column-type primary-key? refers-to]} (get-in dna [table-name :columns column-name])]
+  [xray table-name column-name]
+  (let [{:keys [column-type primary-key? refers-to]} (get-in xray [table-name :columns column-name])]
 
     (or (list 's/def
               (keyword (format-table-name table-name) (name column-name))
 
               (cond
                 refers-to
-                (last (column-spec  dna (first refers-to) (second refers-to)))
+                (last (column-spec xray (first refers-to) (second refers-to)))
 
                 (and (= :integer column-type) primary-key?)
                 (:integer-pk column-types)
@@ -35,9 +35,9 @@
         (throw (ex-info "unknown column-type" {:column-type column-type})))))
 
 (defn generate
-  [dna]
+  [xray]
   (reduce (fn [specs table-name]
-            (let [{:keys [columns]} (table-name dna)
+            (let [{:keys [columns]} (table-name xray)
                   req-columns       (->> columns
                                          (filter (fn [[_ {:keys [nullable?]}]] (not nullable?)))
                                          (map first)
@@ -47,7 +47,7 @@
                                          (map first)
                                          (map #(keyword (format-table-name table-name) (name %))))]
               (-> (reduce (fn [specs column-name]
-                            (conj specs (column-spec dna table-name column-name)))
+                            (conj specs (column-spec xray table-name column-name)))
                           specs
                           (keys columns))
                   (conj (list 's/def
@@ -57,4 +57,4 @@
                                 (seq opt-columns) (into [:opt opt-columns])
                                 true              seq))))))
           []
-          (ddg/table-order dna)))
+          (ddg/table-order xray)))

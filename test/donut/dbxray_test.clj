@@ -29,8 +29,8 @@
     "    REFERENCES parent_records(id)"
     ")"]])
 
-(def ^:private test-mysql      {:dbtype "mysql" :dbname "dbdna_test" :user "root" :create-tables typical-create-tables})
-(def ^:private test-postgres   {:dbtype "embedded-postgres" :dbname "dbdna_test" :create-tables typical-create-tables})
+(def ^:private test-mysql      {:dbtype "mysql" :dbname "dbxray_test" :user "root" :create-tables typical-create-tables})
+(def ^:private test-postgres   {:dbtype "embedded-postgres" :dbname "dbxray_test" :create-tables typical-create-tables})
 (def ^:private test-sqlite-mem {:dbtype "sqlite" :connection-uri "jdbc:sqlite::memory:" :create-tables typical-create-tables})
 (def ^:private test-sqlite-fs  {:dbtype "sqlite" :dbname "sqlite.db" :create-tables typical-create-tables})
 
@@ -39,7 +39,7 @@
 ;; atypical dbs
 
 (def ^:private test-h2   {:dbtype        "h2"
-                          :dbname        "dbdna_test"
+                          :dbname        "dbxray_test"
                           :user          "root"
                           :create-tables [["CREATE TABLE parent_records ("
                                            "  id           integer NOT NULL PRIMARY KEY,"
@@ -57,7 +57,7 @@
                                            "  UNIQUE(id)"
                                            ")"]]})
 (def ^:private test-hsql {:dbtype        "hsql"
-                          :dbname        "dbdna_test"
+                          :dbname        "dbxray_test"
                           :user          "root"
                           :create-tables [["CREATE TABLE parent_records ("
                                            "  id           integer NOT NULL PRIMARY KEY,"
