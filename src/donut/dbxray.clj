@@ -10,18 +10,26 @@
 (def default-adapter
   {:schema-pattern nil
    :column-types   {#"int" :integer}
-   :predicates     {:nullable? (fn [is_nullable] (= "YES" is_nullable))
-                    :unique?   (fn [{:keys [non_unique]}] (not non_unique))}})
+   :predicates     {:nullable? (fn [{:keys [is_nullable] :as _raw}] (= "YES" is_nullable))
+                    :unique?   (fn [{:keys [indexes column_name] :as _raw}]
+                                 (->> (get indexes column_name)
+                                      (filter (complement :non_unique))
+                                      seq))}})
 
 (defmulti adapter* :dbtype)
 
 (defmethod adapter* :postgresql
   [_]
-  {:schema-pattern "public"})
+  {:schema-pattern "public"
+   :predicates     {:autoincrement? (fn [{:keys [type_name]}]
+                                      (re-find #"serial" type_name))}})
 
 (defmethod adapter* :sqlite
   [_]
-  {:predicates   {:unique? (fn [{:keys [non_unique]}] (= 0 non_unique))}
+  {:predicates   {:unique? (fn [{:keys [indexes column_name] :as _raw}]
+                             (->> (get indexes column_name)
+                                  (filter #(= 0 (:non_unique %)))
+                                  seq))}
    :column-types {#"varchar" :varchar}})
 
 (defmethod adapter* :default
@@ -109,20 +117,20 @@
   (let [fks (->> (get-foreign-keys dbmd table-name) (group-by :fkcolumn_name))
         pks (->> (get-primary-keys dbmd table-name) (group-by :column_name))
         ixs (->> (get-index-info dbmd table-name)   (group-by :column_name))]
-    (reduce (fn [cols-map {:keys [column_name is_nullable type_name] :as _col}]
-              (let [fk-ref       (some->> (get fks column_name)
+    (reduce (fn [cols-map {:keys [column_name type_name] :as col}]
+              (let [raw          (-> (select-keys col [:type_name :column_name :is_nullable])
+                                     (assoc :indexes (get ixs column_name)))
+                    fk-ref       (some->> (get fks column_name)
                                           first
                                           ((juxt :pktable_name :pkcolumn_name))
                                           (mapv keyword))
-                    nullable?    ((:nullable? predicates) is_nullable)
-                    primary-key? (get pks column_name)
-                    unique?      (->> (get ixs column_name)
-                                      (filter (:unique? predicates))
-                                      seq)]
+                    nullable?    ((:nullable? predicates) raw)
+                    unique?      ((:unique? predicates) raw)
+                    primary-key? (get pks column_name)]
                 (assoc cols-map
                        (keyword column_name)
                        (cond-> {:column-type (adapt-column-type (-> type_name str/lower-case) column-types)
-                                :raw-column-type type_name}
+                                :raw raw}
                          nullable?    (assoc :nullable? true)
                          primary-key? (assoc :primary-key? true)
                          unique?      (assoc :unique? true)

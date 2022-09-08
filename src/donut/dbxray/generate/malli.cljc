@@ -35,7 +35,7 @@
        (:integer-pk column-types)
 
        :else
-       (column-type column-types :TODO/column-type-not-recognized))]))
+       (column-type column-types [:TODO/column-type-not-recognized column-type]))]))
 
 (defn generate
   [xray]

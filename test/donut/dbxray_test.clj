@@ -149,12 +149,24 @@
 (deftest postgresql-test
   (assert-vendor-data-matches
    test-postgres
-   {:parent_records {:columns {:id           {:raw-column-type "int4"}
-                               :varchar_ex   {:raw-column-type "varchar"}
-                               :text_ex      {:raw-column-type "text"}
-                               :timestamp_ex {:raw-column-type "timestamp"}}}
-    :child_records  {:columns {:id    {:raw-column-type "int4"}
-                               :fk_id {:raw-column-type "int4"}}}}))
+   {:parent_records {:columns {:id           {:raw {:type_name   "int4"
+                                                    :column_name "id"
+                                                    :is_nullable "NO"}}
+                               :varchar_ex   {:raw {:type_name   "varchar"
+                                                    :column_name "varchar_ex"
+                                                    :is_nullable "NO"}}
+                               :text_ex      {:raw {:type_name   "text"
+                                                    :column_name "varchar_ex"
+                                                    :is_nullable "YES"}}
+                               :timestamp_ex {:raw {:type_name   "timestamp"
+                                                    :column_name "timestamp_ex"
+                                                    :is_nullable "YES"}}}}
+    :child_records  {:columns {:id    {:raw {:type_name   "int4"
+                                             :columns     "id"
+                                             :is_nullable "NO"}}
+                               :fk_id {:raw {:type_name   "int4"
+                                             :columns     "id"
+                                             :is_nullable "NO"}}}}}))
 
 (deftest mysql-test
   (assert-vendor-data-matches

@@ -32,7 +32,7 @@
             (:integer-pk column-types)
 
             :else
-            (column-type column-types :TODO/column-type-not-recognized)))))
+            (column-type column-types [:TODO/column-type-not-recognized column-type])))))
 
 (defn- column-specs
   [xray table-name]
@@ -46,7 +46,7 @@
        (map first)
        (mapv #(column-spec-name table-name %))))
 
-(defn table-spec
+(defn- table-spec
   [xray table-name]
   (let [columns     (get-in xray [table-name :columns])
         req-columns (skeys-columns table-name columns :req)
