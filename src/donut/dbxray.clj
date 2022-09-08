@@ -11,8 +11,8 @@
   {:schema-pattern nil
    :column-types   {#"int" :integer}
    :predicates     {:nullable? (fn [{:keys [is_nullable] :as _raw}] (= "YES" is_nullable))
-                    :unique?   (fn [{:keys [indexes column_name] :as _raw}]
-                                 (->> (get indexes column_name)
+                    :unique?   (fn [{:keys [indexes] :as _raw}]
+                                 (->> indexes
                                       (filter (complement :non_unique))
                                       seq))}})
 
@@ -26,8 +26,8 @@
 
 (defmethod adapter* :sqlite
   [_]
-  {:predicates   {:unique? (fn [{:keys [indexes column_name] :as _raw}]
-                             (->> (get indexes column_name)
+  {:predicates   {:unique? (fn [{:keys [indexes] :as _raw}]
+                             (->> indexes
                                   (filter #(= 0 (:non_unique %)))
                                   seq))}
    :column-types {#"varchar" :varchar}})

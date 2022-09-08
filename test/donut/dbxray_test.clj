@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [donut.dbxray :as dbx]
+   [matcher-combinators.test] ;; adds support for `match?` and `thrown-match?` in `is` expressions
    [next.jdbc :as jdbc])
   (:import
    (io.zonky.test.db.postgres.embedded EmbeddedPostgres)))
@@ -37,6 +38,11 @@
 
 ;;---
 ;; atypical dbs
+;; "atypical" is from the perspective of the author, it's not an official database thing.
+;; it just means that these dbs are slightly different than the others:
+;; - the create table syntax is different enough to be handled separately
+;; - the metadata returned is transformed in ways that are different from "typica" dbs, e.g.
+;;   column names are all upper-cased
 
 (def ^:private test-h2   {:dbtype        "h2"
                           :dbname        "dbxray_test"
@@ -138,12 +144,16 @@
 (defn assert-vendor-data-matches
   [test-db result-extras]
   (with-test-db test-db
-    (is (= (deep-merge typical-core-result result-extras)
-           (dbx/xray *dbconn*)))))
+    (is (match? (deep-merge typical-core-result result-extras)
+                (dbx/xray *dbconn*)))))
 
 
 ;;---
 ;; tests
+;;---
+
+;;---
+;; typical dbs
 ;;---
 
 (deftest postgresql-test
@@ -156,91 +166,159 @@
                                                     :column_name "varchar_ex"
                                                     :is_nullable "NO"}}
                                :text_ex      {:raw {:type_name   "text"
-                                                    :column_name "varchar_ex"
+                                                    :column_name "text_ex"
                                                     :is_nullable "YES"}}
                                :timestamp_ex {:raw {:type_name   "timestamp"
                                                     :column_name "timestamp_ex"
                                                     :is_nullable "YES"}}}}
     :child_records  {:columns {:id    {:raw {:type_name   "int4"
-                                             :columns     "id"
+                                             :column_name "id"
                                              :is_nullable "NO"}}
                                :fk_id {:raw {:type_name   "int4"
-                                             :columns     "id"
+                                             :column_name "fk_id"
                                              :is_nullable "NO"}}}}}))
 
 (deftest mysql-test
   (assert-vendor-data-matches
    test-mysql
-   {:parent_records {:columns {:id           {:raw-column-type "INT"}
-                               :varchar_ex   {:raw-column-type "VARCHAR"}
-                               :text_ex      {:raw-column-type "TEXT"}
-                               :timestamp_ex {:raw-column-type "TIMESTAMP"}}}
-    :child_records  {:columns {:id    {:raw-column-type "INT"}
-                               :fk_id {:raw-column-type "INT"}}}}))
+   {:parent_records {:columns {:id           {:raw {:type_name   "INT"
+                                                    :column_name "id"
+                                                    :is_nullable "NO"}}
+                               :varchar_ex   {:raw {:type_name   "VARCHAR"
+                                                    :column_name "varchar_ex"
+                                                    :is_nullable "NO"}}
+                               :text_ex      {:raw {:type_name   "TEXT"
+                                                    :column_name "text_ex"
+                                                    :is_nullable "YES"}}
+                               :timestamp_ex {:raw {:type_name   "TIMESTAMP"
+                                                    :column_name "timestamp_ex"
+                                                    :is_nullable "YES"}}}}
+    :child_records  {:columns {:id    {:raw {:type_name   "INT"
+                                             :column_name "id"
+                                             :is_nullable "NO"}}
+                               :fk_id {:raw {:type_name   "INT"
+                                             :column_name "fk_id"
+                                             :is_nullable "NO"}}}}}))
 
 (deftest sqlite-test
   (assert-vendor-data-matches
    test-sqlite-fs
-   {:parent_records {:columns {:id           {:raw-column-type "INTEGER"}
-                               :varchar_ex   {:raw-column-type "VARCHAR(256)"}
-                               :text_ex      {:raw-column-type "TEXT"}
-                               :timestamp_ex {:raw-column-type "TIMESTAMP"}}}
-    :child_records  {:columns {:id    {:raw-column-type "INTEGER"}
-                               :fk_id {:raw-column-type "INTEGER"}}}})
+   {:parent_records {:columns {:id           {:raw {:type_name   "INTEGER"
+                                                    :column_name "id"
+                                                    :is_nullable "NO"}}
+                               :varchar_ex   {:raw {:type_name   "VARCHAR(256)"
+                                                    :column_name "varchar_ex"
+                                                    :is_nullable "NO"}}
+                               :text_ex      {:raw {:type_name   "TEXT"
+                                                    :column_name "text_ex"
+                                                    :is_nullable "YES"}}
+                               :timestamp_ex {:raw {:type_name   "TIMESTAMP"
+                                                    :column_name "timestamp_ex"
+                                                    :is_nullable "YES"}}}}
+    :child_records  {:columns {:id    {:raw {:type_name   "INTEGER"
+                                             :column_name "id"
+                                             :is_nullable "NO"}}
+                               :fk_id {:raw {:type_name   "INTEGER"
+                                             :column_name "fk_id"
+                                             :is_nullable "NO"}}}}})
 
   (assert-vendor-data-matches
    test-sqlite-mem
-   {:parent_records {:columns {:id           {:raw-column-type "INTEGER"}
-                               :varchar_ex   {:raw-column-type "VARCHAR(256)"}
-                               :text_ex      {:raw-column-type "TEXT"}
-                               :timestamp_ex {:raw-column-type "TIMESTAMP"}}}
-    :child_records  {:columns {:id    {:raw-column-type "INTEGER"}
-                               :fk_id {:raw-column-type "INTEGER"}}}}))
+   {:parent_records {:columns {:id           {:raw {:type_name   "INTEGER"
+                                                    :column_name "id"
+                                                    :is_nullable "NO"}}
+                               :varchar_ex   {:raw {:type_name   "VARCHAR(256)"
+                                                    :column_name "varchar_ex"
+                                                    :is_nullable "NO"}}
+                               :text_ex      {:raw {:type_name   "TEXT"
+                                                    :column_name "text_ex"
+                                                    :is_nullable "YES"}}
+                               :timestamp_ex {:raw {:type_name   "TIMESTAMP"
+                                                    :column_name "timestamp_ex"
+                                                    :is_nullable "YES"}}}}
+    :child_records  {:columns {:id    {:raw {:type_name   "INTEGER"
+                                             :column_name "id"
+                                             :is_nullable "NO"}}
+                               :fk_id {:raw {:type_name   "INTEGER"
+                                             :column_name "fk_id"
+                                             :is_nullable "NO"}}}}}))
+
+;;---
+;; atypical dbs
+;;---
 
 (deftest h2-test
   (with-test-db test-h2
-    (is (= {:PARENT_RECORDS {:columns {:ID           {:column-type     :integer
-                                                      :primary-key?    true
-                                                      :unique?         true
-                                                      :raw-column-type "INTEGER"}
-                                       :VARCHAR_EX   {:column-type     :varchar
-                                                      :unique?         true
-                                                      :raw-column-type "VARCHAR"}
-                                       :TEXT_EX      {:column-type     :clob
-                                                      :nullable?       true
-                                                      :raw-column-type "CLOB"}
-                                       :TIMESTAMP_EX {:column-type     :timestamp
-                                                      :nullable?       true
-                                                      :raw-column-type "TIMESTAMP"}}}
-            :CHILD_RECORDS  {:columns {:ID    {:column-type     :integer
-                                               :primary-key?    true
-                                               :unique?         true
-                                               :raw-column-type "INTEGER"}
-                                       :FK_ID {:column-type     :integer
-                                               :refers-to       [:PARENT_RECORDS :ID]
-                                               :raw-column-type "INTEGER"}}}}
-           (dbx/xray *dbconn*)))))
+    (is
+     (match?
+      {:PARENT_RECORDS {:columns {:ID           {:column-type  :integer
+                                                 :primary-key? true
+                                                 :unique?      true
+                                                 :raw          {:type_name   "INTEGER"
+                                                                :column_name "ID"
+                                                                :is_nullable "NO"}}
+                                  :VARCHAR_EX   {:column-type :varchar
+                                                 :unique?     true
+                                                 :raw         {:type_name   "VARCHAR"
+                                                               :column_name "VARCHAR_EX"
+                                                               :is_nullable "NO"}}
+                                  :TEXT_EX      {:column-type :clob
+                                                 :nullable?   true
+                                                 :raw         {:type_name   "CLOB"
+                                                               :column_name "TEXT_EX"
+                                                               :is_nullable "YES"}}
+                                  :TIMESTAMP_EX {:column-type :timestamp
+                                                 :nullable?   true
+                                                 :raw         {:type_name   "TIMESTAMP"
+                                                               :column_name "TIMESTAMP_EX"
+                                                               :is_nullable "YES"}}}}
+       :CHILD_RECORDS  {:columns {:ID    {:column-type  :integer
+                                          :primary-key? true
+                                          :unique?      true
+                                          :raw          {:type_name   "INTEGER"
+                                                         :column_name "ID"
+                                                         :is_nullable "NO"}}
+                                  :FK_ID {:column-type :integer
+                                          :refers-to   [:PARENT_RECORDS :ID]
+                                          :raw         {:type_name   "INTEGER"
+                                                        :column_name "FK_ID"
+                                                        :is_nullable "NO"}}}}}
+      (dbx/xray *dbconn*)))))
 
 (deftest hsql-test
   (with-test-db test-hsql
-    (is (= {:PARENT_RECORDS {:columns {:ID           {:column-type     :integer
-                                                      :primary-key?    true
-                                                      :unique?         true
-                                                      :raw-column-type "INTEGER"}
-                                       :VARCHAR_EX   {:column-type     :varchar
-                                                      :unique?         true
-                                                      :raw-column-type "VARCHAR"}
-                                       :TEXT_EX      {:column-type     :clob
-                                                      :nullable?       true
-                                                      :raw-column-type "CLOB"}
-                                       :TIMESTAMP_EX {:column-type     :timestamp
-                                                      :nullable?       true
-                                                      :raw-column-type "TIMESTAMP"}}}
-            :CHILD_RECORDS  {:columns {:ID    {:column-type     :integer
-                                               :primary-key?    true
-                                               :unique?         true
-                                               :raw-column-type "INTEGER"}
-                                       :FK_ID {:column-type     :integer
-                                               :refers-to       [:PARENT_RECORDS :ID]
-                                               :raw-column-type "INTEGER"}}}}
-           (dbx/xray *dbconn*)))))
+    (is
+     (match?
+      {:PARENT_RECORDS {:columns {:ID           {:column-type  :integer
+                                                 :primary-key? true
+                                                 :unique?      true
+                                                 :raw          {:type_name   "INTEGER"
+                                                                :column_name "ID"
+                                                                :is_nullable "NO"}}
+                                  :VARCHAR_EX   {:column-type :varchar
+                                                 :unique?     true
+                                                 :raw         {:type_name   "VARCHAR"
+                                                               :column_name "VARCHAR_EX"
+                                                               :is_nullable "NO"}}
+                                  :TEXT_EX      {:column-type :clob
+                                                 :nullable?   true
+                                                 :raw         {:type_name   "CLOB"
+                                                               :column_name "TEXT_EX"
+                                                               :is_nullable "YES"}}
+                                  :TIMESTAMP_EX {:column-type :timestamp
+                                                 :nullable?   true
+                                                 :raw         {:type_name   "TIMESTAMP"
+                                                               :column_name "TIMESTAMP_EX"
+                                                               :is_nullable "YES"}}}}
+       :CHILD_RECORDS  {:columns {:ID    {:column-type  :integer
+                                          :primary-key? true
+                                          :unique?      true
+                                          :raw          {:type_name   "INTEGER"
+                                                         :column_name "ID"
+                                                         :is_nullable "NO"}}
+                                  :FK_ID {:column-type :integer
+                                          :refers-to   [:PARENT_RECORDS :ID]
+                                          :raw         {:type_name   "INTEGER"
+                                                        :column_name "FK_ID"
+                                                        :is_nullable "NO"}}}}}
+      (dbx/xray *dbconn*)))))
