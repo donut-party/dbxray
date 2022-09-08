@@ -5,21 +5,21 @@
    [donut.dbxray.generate.spec :as ddgs]))
 
 (deftest generates-spec-specs
-  (is (= '[(s/def :user/id pos-int?)
-           (s/def :user/username string?)
-           (s/def :record/user (s/keys :req [:user/id :user/username]))
-           (s/def :todo-list/id pos-int?)
-           (s/def :todo-list/created_by_id pos-int?)
-           (s/def :record/todo-list
-             (s/keys :req [:todo-list/id]
-                     :opt [:todo-list/created_by_id]))
-           (s/def :todo/id pos-int?)
-           (s/def :todo/todo_list_id pos-int?)
-           (s/def :todo/todo_title string?)
-           (s/def :todo/notes string?)
-           (s/def :todo/created_by_id pos-int?)
-           (s/def :todo/created_at inst?)
+  (is (= '[(s/def :users/id pos-int?)
+           (s/def :users/username string?)
+           (s/def :record/user (s/keys :req [:users/id :users/username]))
+           (s/def :todo_lists/id pos-int?)
+           (s/def :todo_lists/created_by_id pos-int?)
+           (s/def :record/todo_list
+             (s/keys :req [:todo_lists/id]
+                     :opt [:todo_lists/created_by_id]))
+           (s/def :todos/id pos-int?)
+           (s/def :todos/todo_list_id pos-int?)
+           (s/def :todos/todo_title string?)
+           (s/def :todos/notes string?)
+           (s/def :todos/created_by_id pos-int?)
+           (s/def :todos/created_at inst?)
            (s/def :record/todo
-             (s/keys :req [:todo/id :todo/todo_title]
-                     :opt [:todo/todo_list_id :todo/notes :todo/created_by_id :todo/created_at]))]
+             (s/keys :req [:todos/id :todos/todo_title]
+                     :opt [:todos/todo_list_id :todos/notes :todos/created_by_id :todos/created_at]))]
          (ddgs/generate ddf/todo-list-xray))))
