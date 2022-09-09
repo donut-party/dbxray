@@ -18,7 +18,7 @@
 
 (def typical-create-tables
   [["CREATE TABLE parent_records ("
-    "  id           integer NOT NULL PRIMARY KEY UNIQUE,"
+    "  id           integer NOT NULL PRIMARY KEY UNIQUE AUTO_INCREMENT,"
     "  varchar_ex   varchar(256) NOT NULL UNIQUE,"
     "  text_ex      text,"
     "  timestamp_ex TIMESTAMP NULL"
@@ -29,54 +29,6 @@
     "  FOREIGN KEY(fk_id)"
     "    REFERENCES parent_records(id)"
     ")"]])
-
-(def ^:private test-mysql      {:dbtype "mysql" :dbname "dbxray_test" :user "root" :create-tables typical-create-tables})
-(def ^:private test-postgres   {:dbtype "embedded-postgres" :dbname "dbxray_test" :create-tables typical-create-tables})
-(def ^:private test-sqlite-mem {:dbtype "sqlite" :connection-uri "jdbc:sqlite::memory:" :create-tables typical-create-tables})
-(def ^:private test-sqlite-fs  {:dbtype "sqlite" :dbname "sqlite.db" :create-tables typical-create-tables})
-
-
-;;---
-;; atypical dbs
-;; "atypical" is from the perspective of the author, it's not an official database thing.
-;; it just means that these dbs are slightly different than the others:
-;; - the create table syntax is different enough to be handled separately
-;; - the metadata returned is transformed in ways that are different from "typica" dbs, e.g.
-;;   column names are all upper-cased
-
-(def ^:private test-h2   {:dbtype        "h2"
-                          :dbname        "dbxray_test"
-                          :user          "root"
-                          :create-tables [["CREATE TABLE parent_records ("
-                                           "  id           integer NOT NULL PRIMARY KEY,"
-                                           "  varchar_ex   varchar(256) NOT NULL,"
-                                           "  text_ex      text,"
-                                           "  timestamp_ex TIMESTAMP NULL,"
-                                           "  UNIQUE(id),"
-                                           "  UNIQUE(varchar_ex)"
-                                           ")"]
-                                          ["CREATE TABLE child_records ("
-                                           "  id    integer PRIMARY KEY NOT NULL,"
-                                           "  fk_id integer NOT NULL,"
-                                           "  FOREIGN KEY(fk_id)"
-                                           "    REFERENCES parent_records(id),"
-                                           "  UNIQUE(id)"
-                                           ")"]]})
-(def ^:private test-hsql {:dbtype        "hsql"
-                          :dbname        "dbxray_test"
-                          :user          "root"
-                          :create-tables [["CREATE TABLE parent_records ("
-                                           "  id           integer NOT NULL PRIMARY KEY,"
-                                           "  varchar_ex   varchar(256) NOT NULL UNIQUE,"
-                                           "  text_ex      clob,"
-                                           "  timestamp_ex TIMESTAMP NULL"
-                                           ")"]
-                                          ["CREATE TABLE child_records ("
-                                           "  id    integer PRIMARY KEY NOT NULL,"
-                                           "  fk_id integer NOT NULL,"
-                                           "  FOREIGN KEY(fk_id)"
-                                           "    REFERENCES parent_records(id)"
-                                           ")"]]})
 
 ;;---
 ;; helpers
@@ -94,11 +46,6 @@
       (jdbc/execute! conn [(str "DROP TABLE " table-name)])
       (catch Exception _)))
   (execute-many! conn create-table-statements))
-
-(comment "to try out table creation"
-         (let [dbconf test-hsql]
-           (with-open [conn (jdbc/get-connection dbconf)]
-             (create-tables conn (:create-tables dbconf)))))
 
 (defmacro with-test-db
   [test-db & body]
@@ -126,9 +73,10 @@
 
 (def typical-core-result
   "Most vendors return something that looks like this"
-  {:parent_records {:columns {:id           {:column-type  :integer
-                                             :primary-key? true
-                                             :unique?      true}
+  {:parent_records {:columns {:id           {:column-type    :integer
+                                             :primary-key?   true
+                                             :unique?        true
+                                             :autoincrement? true}
                               :varchar_ex   {:column-type :varchar
                                              :unique?     true}
                               :text_ex      {:column-type :text
@@ -153,13 +101,29 @@
 ;;---
 
 ;;---
-;; typical dbs
+;; postgres
 ;;---
+
+(def ^:private test-postgres
+  {:dbtype        "embedded-postgres"
+   :dbname        "dbxray_test"
+   :create-tables [["CREATE TABLE parent_records ("
+                    "  id           serial NOT NULL PRIMARY KEY UNIQUE,"
+                    "  varchar_ex   varchar(256) NOT NULL UNIQUE,"
+                    "  text_ex      text,"
+                    "  timestamp_ex TIMESTAMP NULL"
+                    ")"]
+                   ["CREATE TABLE child_records ("
+                    "  id    integer PRIMARY KEY NOT NULL UNIQUE,"
+                    "  fk_id integer NOT NULL,"
+                    "  FOREIGN KEY(fk_id)"
+                    "    REFERENCES parent_records(id)"
+                    ")"]]})
 
 (deftest postgresql-test
   (assert-vendor-data-matches
    test-postgres
-   {:parent_records {:columns {:id           {:raw {:type_name   "int4"
+   {:parent_records {:columns {:id           {:raw {:type_name   "serial"
                                                     :column_name "id"
                                                     :is_nullable "NO"}}
                                :varchar_ex   {:raw {:type_name   "varchar"
@@ -177,6 +141,27 @@
                                :fk_id {:raw {:type_name   "int4"
                                              :column_name "fk_id"
                                              :is_nullable "NO"}}}}}))
+
+;;---
+;; mysql
+;;---
+
+(def ^:private test-mysql
+  {:dbtype        "mysql"
+   :dbname        "dbxray_test"
+   :user          "root"
+   :create-tables [["CREATE TABLE parent_records ("
+                    "  id           integer NOT NULL PRIMARY KEY UNIQUE AUTO_INCREMENT,"
+                    "  varchar_ex   varchar(256) NOT NULL UNIQUE,"
+                    "  text_ex      text,"
+                    "  timestamp_ex TIMESTAMP NULL"
+                    ")"]
+                   ["CREATE TABLE child_records ("
+                    "  id    integer PRIMARY KEY NOT NULL UNIQUE,"
+                    "  fk_id integer NOT NULL,"
+                    "  FOREIGN KEY(fk_id)"
+                    "    REFERENCES parent_records(id)"
+                    ")"]]})
 
 (deftest mysql-test
   (assert-vendor-data-matches
@@ -199,6 +184,34 @@
                                :fk_id {:raw {:type_name   "INT"
                                              :column_name "fk_id"
                                              :is_nullable "NO"}}}}}))
+
+;;---
+;; sqlite
+;;---
+
+(def sqlite-create-tables
+  [["CREATE TABLE parent_records ("
+    "  id           integer NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,"
+    "  varchar_ex   varchar(256) NOT NULL UNIQUE,"
+    "  text_ex      text,"
+    "  timestamp_ex TIMESTAMP NULL"
+    ")"]
+   ["CREATE TABLE child_records ("
+    "  id    integer PRIMARY KEY NOT NULL UNIQUE,"
+    "  fk_id integer NOT NULL,"
+    "  FOREIGN KEY(fk_id)"
+    "    REFERENCES parent_records(id)"
+    ")"]])
+
+(def ^:private test-sqlite-mem
+  {:dbtype         "sqlite"
+   :connection-uri "jdbc:sqlite::memory:"
+   :create-tables  sqlite-create-tables})
+
+(def ^:private test-sqlite-fs
+  {:dbtype        "sqlite"
+   :dbname        "sqlite.db"
+   :create-tables sqlite-create-tables})
 
 (deftest sqlite-test
   (assert-vendor-data-matches
@@ -243,20 +256,41 @@
                                              :column_name "fk_id"
                                              :is_nullable "NO"}}}}}))
 
+(def ^:private test-h2
+  {:dbtype        "h2"
+   :dbname        "dbxray_test"
+   :user          "root"
+   :create-tables [["CREATE TABLE parent_records ("
+                    "  id           integer NOT NULL IDENTITY PRIMARY KEY,"
+                    "  varchar_ex   varchar(256) NOT NULL,"
+                    "  text_ex      text,"
+                    "  timestamp_ex TIMESTAMP NULL,"
+                    "  UNIQUE(id),"
+                    "  UNIQUE(varchar_ex)"
+                    ")"]
+                   ["CREATE TABLE child_records ("
+                    "  id    integer PRIMARY KEY NOT NULL,"
+                    "  fk_id integer NOT NULL,"
+                    "  FOREIGN KEY(fk_id)"
+                    "    REFERENCES parent_records(id),"
+                    "  UNIQUE(id)"
+                    ")"]]})
+
 ;;---
-;; atypical dbs
+;; h2
 ;;---
 
 (deftest h2-test
   (with-test-db test-h2
     (is
      (match?
-      {:PARENT_RECORDS {:columns {:ID           {:column-type  :integer
-                                                 :primary-key? true
-                                                 :unique?      true
-                                                 :raw          {:type_name   "INTEGER"
-                                                                :column_name "ID"
-                                                                :is_nullable "NO"}}
+      {:PARENT_RECORDS {:columns {:ID           {:column-type    :integer
+                                                 :primary-key?   true
+                                                 :unique?        true
+                                                 :autoincrement? true
+                                                 :raw            {:type_name   "INTEGER"
+                                                                  :column_name "ID"
+                                                                  :is_nullable "NO"}}
                                   :VARCHAR_EX   {:column-type :varchar
                                                  :unique?     true
                                                  :raw         {:type_name   "VARCHAR"
@@ -285,16 +319,38 @@
                                                         :is_nullable "NO"}}}}}
       (dbx/xray *dbconn*)))))
 
+;;---
+;; hsql
+;;---
+
+(def ^:private test-hsql
+  {:dbtype        "hsql"
+   :dbname        "dbxray_test"
+   :user          "root"
+   :create-tables [["CREATE TABLE parent_records ("
+                    "  id           integer IDENTITY PRIMARY KEY,"
+                    "  varchar_ex   varchar(256) NOT NULL UNIQUE,"
+                    "  text_ex      clob,"
+                    "  timestamp_ex TIMESTAMP NULL"
+                    ")"]
+                   ["CREATE TABLE child_records ("
+                    "  id    integer PRIMARY KEY NOT NULL,"
+                    "  fk_id integer NOT NULL,"
+                    "  FOREIGN KEY(fk_id)"
+                    "    REFERENCES parent_records(id)"
+                    ")"]]})
+
 (deftest hsql-test
   (with-test-db test-hsql
     (is
      (match?
-      {:PARENT_RECORDS {:columns {:ID           {:column-type  :integer
-                                                 :primary-key? true
-                                                 :unique?      true
-                                                 :raw          {:type_name   "INTEGER"
-                                                                :column_name "ID"
-                                                                :is_nullable "NO"}}
+      {:PARENT_RECORDS {:columns {:ID           {:column-type    :integer
+                                                 :primary-key?   true
+                                                 :unique?        true
+                                                 :autoincrement? true
+                                                 :raw            {:type_name   "INTEGER"
+                                                                  :column_name "ID"
+                                                                  :is_nullable "NO"}}
                                   :VARCHAR_EX   {:column-type :varchar
                                                  :unique?     true
                                                  :raw         {:type_name   "VARCHAR"
@@ -322,3 +378,14 @@
                                                         :column_name "FK_ID"
                                                         :is_nullable "NO"}}}}}
       (dbx/xray *dbconn*)))))
+
+
+;;---
+;; scratch
+;;---
+
+(comment
+  "to try out table creation"
+  (let [dbconf test-hsql]
+    (with-open [conn (jdbc/get-connection dbconf)]
+      (create-tables conn (:create-tables dbconf)))))
