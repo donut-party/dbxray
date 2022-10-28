@@ -1,0 +1,52 @@
+version: 2
+jobs:
+  test-and-build:
+    environment:
+      - _JAVA_OPTIONS: "-Xms512m -Xmx1024m"
+    docker:
+      - image: cimg/clojure:1.11.1-openjdk-8.0-node
+    steps:
+      - checkout
+
+      # core
+      - run:
+          name: test dbxray clj
+          command: cd datapotato && clojure -X:test
+      - run:
+          name: Build datapotato
+          command: cd datapotato && clojure -T:build jar
+
+      - save-cache:
+          paths:
+            - ~/bin
+            - ~/.m2
+          key: donut-{{ checksum "donut/build.clj" }}
+      - persist_to_workspace:
+          root: ./
+          paths:
+            - ./
+  deploy:
+    docker:
+      - image: cimg/clojure:1.11.1-openjdk-8.0-node
+    steps:
+      - checkout
+      - restore_cache:
+          key: datapotato-{{ checksum "donut/build.clj" }}
+      - attach_workspace:
+          at: ./
+      - run:
+          name: Deploy dbxray to clojars
+          command: cd dbxray && clojure -T:build deploy
+
+workflows:
+  version: 2
+  deploy:
+    jobs:
+      - test-and-build
+      - deploy:
+          filters:
+            branches:
+              only:
+                - release
+          requires:
+            - test-and-build
