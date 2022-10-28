@@ -39,10 +39,11 @@
 
 (defn generate
   [xray]
-  (mapv (fn [table-name]
-          (let [table-xray (table-name xray)]
-            (list 'def
-                  (table-spec-name table-name)
-                  (into [:map] (map #(column-spec xray table-name %)
-                                    (keys (:columns table-xray)))))))
-        (ddg/table-order xray)))
+  (->> xray
+       keys
+       (mapv (fn [table-name]
+               (let [table-xray (table-name xray)]
+                 (list 'def
+                       (table-spec-name table-name)
+                       (into [:map] (map #(column-spec xray table-name %)
+                                         (keys (:columns table-xray))))))))))

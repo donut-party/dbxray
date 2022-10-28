@@ -5,7 +5,8 @@
    [flatland.ordered.map :as omap]
    [next.jdbc :as jdbc]
    [next.jdbc.datafy :as njdf]
-   [next.jdbc.result-set :as njrs]))
+   [next.jdbc.result-set :as njrs]
+   [weavejester.dependency :as dep]))
 
 (def default-adapter
   {:schema-pattern nil
@@ -143,16 +144,38 @@
             (omap/ordered-map)
             table-cols)))
 
+(defn- table-deps
+  "used to create an omap for tables"
+  [xray]
+  (for [[table-name table-xray] xray
+        [_ column-xray]         (:columns table-xray)
+        :let                    [refers-to (first (:refers-to column-xray))]
+        :when                   refers-to]
+    [table-name refers-to]))
+
+(defn- table-order
+  "used to create an omap for tables"
+  [xray]
+  (->> (table-deps xray)
+       (reduce (fn [g [table-name dep]]
+                 (dep/depend g table-name dep))
+               (dep/graph))
+       (dep/topo-sort)))
+
 (defn xray
   [conn]
   (let [dbmd    (prep conn)
         tables  (get-tables dbmd)
-        columns (group-by :table_name (get-columns dbmd))]
-    (reduce (fn [xr {:keys [table_name]}]
-              (let [table-cols (get columns table_name)]
-                (assoc xr (keyword table_name) {:columns (build-columns dbmd table_name table-cols)})))
-            {}
-            tables)))
+        columns (group-by :table_name (get-columns dbmd))
+        xray    (reduce (fn [xr {:keys [table_name]}]
+                          (let [table-cols (get columns table_name)]
+                            (assoc xr (keyword table_name) {:columns (build-columns dbmd table_name table-cols)})))
+                        {}
+                        tables)]
+    (reduce (fn [omap-xray table-name]
+              (assoc omap-xray table-name (table-name xray)))
+            (omap/ordered-map)
+            (table-order xray))))
 
 (comment
   (get-index-info (prep (jdbc/get-connection {:dbtype "mysql"

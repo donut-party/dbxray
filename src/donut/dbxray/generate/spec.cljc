@@ -60,7 +60,8 @@
 
 (defn generate
   [xray]
-  (->> (ddg/table-order xray)
+  (->> xray
+       keys
        (mapcat (fn [table-name]
                  (conj (column-specs xray table-name)
                        (table-spec xray table-name))))
