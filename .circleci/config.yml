@@ -11,10 +11,10 @@ jobs:
       # core
       - run:
           name: test dbxray clj
-          command: cd datapotato && clojure -X:test
+          command: clojure -X:test
       - run:
           name: Build datapotato
-          command: cd datapotato && clojure -T:build jar
+          command: clojure -T:build jar
 
       - save-cache:
           paths:
@@ -36,7 +36,7 @@ jobs:
           at: ./
       - run:
           name: Deploy dbxray to clojars
-          command: cd dbxray && clojure -T:build deploy
+          command: clojure -T:build deploy
 
 workflows:
   version: 2

@@ -105,3 +105,5 @@ You can generate basic specs from this metadata:
     [:todos/todo_list_id {:optional? false} pos-int?]
     [:todos/description {:optional? false} string?]])]
 ```
+
+If you run this in a REPL you can just copy and paste it into your source code.
