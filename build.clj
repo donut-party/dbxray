@@ -1,5 +1,5 @@
 (ns build
-  "datapotato's build script. inspired by:
+  "dbxray's build script. inspired by:
   * https://github.com/seancorfield/honeysql/blob/develop/build.clj
   * https://github.com/seancorfield/build-clj
 
@@ -12,8 +12,8 @@
   (:require [clojure.tools.build.api :as b]
             [org.corfield.build :as bb]))
 
-(def lib 'club.donutpower/datapotato)
-(def version (format "0.0.0.%s" (b/git-count-revs nil)))
+(def lib 'club.donutpower/dbxray)
+(def version (format "0.0.%s" (b/git-count-revs nil)))
 
 (defn deploy "Deploy the JAR to Clojars"
   [opts]

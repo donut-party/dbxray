@@ -13,7 +13,7 @@ jobs:
           name: test dbxray clj
           command: clojure -X:test
       - run:
-          name: Build datapotato
+          name: Build dbxray
           command: clojure -T:build jar
 
       - save-cache:
@@ -31,7 +31,7 @@ jobs:
     steps:
       - checkout
       - restore_cache:
-          key: datapotato-{{ checksum "donut/build.clj" }}
+          key: dbxray-{{ checksum "donut/build.clj" }}
       - attach_workspace:
           at: ./
       - run:
