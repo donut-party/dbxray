@@ -1,7 +1,10 @@
+
+
 dbxray provides metadata about JDBC databases and uses that data to generate
 specs/schemas that you can copy into your application. It can save you some time
-if you're just getting started with [spec](https://clojure.org/guides/spec) or
-[malli](https://github.com/metosin/malli).
+if you're just getting started with [spec](https://clojure.org/guides/spec),
+[malli](https://github.com/metosin/malli), or [plumatic
+schema](https://github.com/plumatic/schema).
 
 Here's the kind of metadata it produces:
 
@@ -107,3 +110,10 @@ You can generate basic specs from this metadata:
 ```
 
 If you run this in a REPL you can just copy and paste it into your source code.
+
+The namespaces for generating specs or schemas are:
+
+* `donut.dbxray.generate.datapotato`
+* `donut.dbxray.generate.malli`
+* `donut.dbxray.generate.plumatic-schema`
+* `donut.dbxray.generate.spec`

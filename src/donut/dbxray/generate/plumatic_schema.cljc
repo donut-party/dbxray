@@ -1,15 +1,15 @@
-(ns donut.dbxray.generate.malli
+(ns donut.dbxray.generate.plumatic-schema
   (:require
    [camel-snake-kebab.core :as csk]
    [donut.dbxray.generate :as ddg]))
 
 (def column-types
-  {:integer    'int?
-   :integer-pk 'pos-int?
-   :clob       'string?
-   :text       'string?
-   :varchar    'string?
-   :timestamp  'inst?})
+  {:integer    's/Int
+   :integer-pk 's/Int
+   :clob       's/Str
+   :text       's/Str
+   :varchar    's/Str
+   :timestamp  's/Inst})
 
 (defn- table-spec-name
   [table-name]
@@ -24,8 +24,8 @@
 (defn- column-spec
   [xray table-name column-name]
   (let [{:keys [column-type primary-key? nullable? refers-to]} (get-in xray [table-name :columns column-name])]
-    [(column-spec-name table-name column-name)
-     {:optional? (boolean nullable?)}
+    [(cond->> (column-spec-name table-name column-name)
+       (not nullable?) (list 's/required-key))
 
      (cond
        refers-to
@@ -43,10 +43,10 @@
        keys
        (mapv (fn [table-name]
                (let [table-xray (table-name xray)]
-                 (list 'def
+                 (list 's/defschema
                        (table-spec-name table-name)
                        (->> table-xray
                             :columns
                             keys
                             (map #(column-spec xray table-name %))
-                            (into [:map]))))))))
+                            (into {}))))))))
