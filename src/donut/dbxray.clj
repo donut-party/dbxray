@@ -11,12 +11,14 @@
 (def default-adapter
   {:schema-pattern nil
    :column-types   {#"int" :integer}
-   :predicates     {:nullable?      (fn [{:keys [is_nullable] :as _raw}] (= "YES" is_nullable))
+   :predicates     {:nullable?      (fn [{:keys [is_nullable] :as _raw}]
+                                      (= "YES" is_nullable))
                     :unique?        (fn [{:keys [indexes] :as _raw}]
                                       (->> indexes
                                            (filter (complement :non_unique))
                                            seq))
-                    :autoincrement? (fn [{:keys [is_autoincrement] :as _raw}] (= "YES" is_autoincrement))}})
+                    :autoincrement? (fn [{:keys [is_autoincrement] :as _raw}]
+                                      (= "YES" is_autoincrement))}})
 
 (defmulti adapter* :dbtype)
 
@@ -157,8 +159,7 @@
   "used to create an omap for tables"
   [xray]
   (->> (table-deps xray)
-       (reduce (fn [g [table-name dep]]
-                 (dep/depend g table-name dep))
+       (reduce (fn [g [table-name dep]] (dep/depend g table-name dep))
                (dep/graph))
        (dep/topo-sort)))
 
@@ -169,7 +170,11 @@
         columns (group-by :table_name (get-columns dbmd))
         xray    (reduce (fn [xr {:keys [table_name]}]
                           (let [table-cols (get columns table_name)]
-                            (assoc xr (keyword table_name) {:columns (build-columns dbmd table_name table-cols)})))
+                            (assoc xr
+                                   (keyword table_name)
+                                   {:columns (build-columns dbmd
+                                                            table_name
+                                                            table-cols)})))
                         {}
                         tables)]
     (reduce (fn [omap-xray table-name]
@@ -178,17 +183,14 @@
             (table-order xray))))
 
 (comment
-  (get-index-info (prep (jdbc/get-connection {:dbtype "mysql"
-                                              :dbname "dbxray_test"
-                                              :user   "root"}))
+  (get-index-info (prep (jdbc/get-connection
+                         {:dbtype "mysql", :dbname "dbxray_test", :user "root"}))
                   "parent_records")
-
-  (with-open [conn (jdbc/get-connection {:dbtype "sqlite" :dbname "sqlite.db"})]
-    (clojure.datafy/nav (clojure.datafy/datafy (.getMetaData conn)) :schemas nil))
-
-  (with-open [conn (jdbc/get-connection {:dbtype "sqlite" :dbname "sqlite.db"})]
-    (->
-     (.getMetaData conn)
-     (.getTables nil nil nil nil)
-     clojure.datafy/datafy
-     )))
+  (with-open [conn (jdbc/get-connection {:dbtype "sqlite", :dbname "sqlite.db"})]
+    (clojure.datafy/nav (clojure.datafy/datafy (.getMetaData conn))
+                        :schemas
+                        nil))
+  (with-open [conn (jdbc/get-connection {:dbtype "sqlite", :dbname "sqlite.db"})]
+    (-> (.getMetaData conn)
+        (.getTables nil nil nil nil)
+        clojure.datafy/datafy)))
