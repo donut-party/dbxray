@@ -16,15 +16,12 @@
   (let [table (name table-name)]
     (keyword (str table "/" (name col-name)))))
 
-(defn munge-refers-to
-  [[refers-to-table refers-to-col]]
-  [refers-to-table (add-table-prefix-to-col-name refers-to-table refers-to-col)]) 
-
 (defn gen-relations-for-column
   [table-name column-name column-data]
-  (when-let [ref (:refers-to column-data)]
+  (when-let [refers-to (:refers-to column-data)]
     (let [relations-key (add-table-prefix-to-col-name table-name column-name)
-          relations-path (munge-refers-to ref)]
+          [ref-table ref-col] refers-to
+          relations-path [ref-table (add-table-prefix-to-col-name ref-table ref-col)]]
       {:relations {relations-key relations-path}})))
 
 (defn gen-potato-for-table
