@@ -1,8 +1,6 @@
 (ns donut.dbxray.generate.datapotato
   (:require
-   [camel-snake-kebab.core :as csk]
    [clojure.string :as string]
-   [flatland.ordered.map :as omap]
    [donut.dbxray.generate :as ddg]))
 
 (defn- gen-table-prefix
