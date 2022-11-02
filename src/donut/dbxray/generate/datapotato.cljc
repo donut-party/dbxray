@@ -22,7 +22,7 @@
           relations-path [ref-table (add-table-prefix-to-col-name ref-table ref-col)]]
       {:relations {relations-key relations-path}})))
 
-(defn- gen-potato-for-table
+(defn- table-potato-schema
   [table-name table-data]
   (let [{:keys [columns]} table-data
         prefix (gen-table-prefix table-name)]
