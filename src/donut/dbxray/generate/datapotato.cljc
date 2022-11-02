@@ -3,7 +3,7 @@
    [clojure.string :as string]
    [donut.dbxray.generate :as ddg]))
 
-(defn- gen-table-prefix
+(defn- table-prefix
   [table-name]
   (let [words (string/split (name table-name) #"_")
         initials (map (comp str first) words)]
