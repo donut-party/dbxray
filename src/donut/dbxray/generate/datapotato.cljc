@@ -6,7 +6,7 @@
 (defn- table-prefix
   [table-name]
   (let [words (string/split (name table-name) #"_")
-        initials (map (comp str first) words)]
+        initials (map first words)]
     {:prefix (keyword (apply str initials))}))
 
 (defn- full-column-name
