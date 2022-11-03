@@ -6,7 +6,6 @@
    [flatland.ordered.map :as omap]))
 
 (deftest generates-datapotato-schema
-  (let [datapotato-schem (omap/ordered-map)])
   (is (= (into []
                (omap/ordered-map :users      {:prefix :u}
                                  :todo_lists {:prefix    :tl
