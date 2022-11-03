@@ -38,5 +38,5 @@
   [xray]
   (reduce (fn [generated [table-name table-data]]
             (merge generated (table-potato-schema table-name table-data)))
-          {}
+          (omap/ordered-map)
           xray))
