@@ -34,10 +34,9 @@
        {table-name (merge prefix
                           (table-relations table-name columns))}))
 
-
 (defn generate
   [xray]
   (reduce (fn [generated [table-name table-data]]
-            (merge generated (gen-potato-for-table table-name table-data)))
+            (merge generated (table-potato-schema table-name table-data)))
           {}
           xray))
