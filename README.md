@@ -153,3 +153,15 @@ You can generate basic specs or schemas from this metadata:
 
 If you run this in a REPL you can just copy and paste the results into your
 source code.
+
+## Help wanted!
+
+The library has some utility in its current state but has a lot of room for
+improvement. I'd love feedback / collaboration on:
+
+* How to represent the metadata. I'm not a database expert and am unsure whether
+  the approach taken might lead to problems.
+* Adapter implementations. Every vendor has different internal representations
+  for their metadata, and dbxray attempts to provide a consistent Clojure
+  representation. The translation between vendor and Clojure happens via the
+  `adapter*` multimethod, and I've only implemented a couple so far.
