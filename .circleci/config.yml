@@ -44,7 +44,7 @@ jobs:
           paths:
             - ~/bin
             - ~/.m2
-          key: donut-{{ checksum "donut/build.clj" }}
+          key: donut-{{ checksum "build.clj" }}
       - persist_to_workspace:
           root: ./
           paths:
@@ -55,7 +55,7 @@ jobs:
     steps:
       - checkout
       - restore_cache:
-          key: dbxray-{{ checksum "donut/build.clj" }}
+          key: dbxray-{{ checksum "build.clj" }}
       - attach_workspace:
           at: ./
       - run:
