@@ -58,12 +58,13 @@
       keyword))
 
 (defn prep
-  [conn]
+  "returns metadata needed to construct xray"
+  [conn & [adapter-opts]]
   (let [metadata (.getMetaData conn)
         dbtype   (database-product-name metadata)
         dbmd     {:metadata metadata
                   :dbtype   dbtype}]
-    (assoc dbmd :dbadapter (adapter dbmd))))
+    (assoc dbmd :dbadapter (merge (adapter dbmd) adapter-opts))))
 
 (defn datafy-result-set
   [rs]
@@ -168,8 +169,11 @@
        (dep/topo-sort)))
 
 (defn xray
-  [conn]
-  (let [dbmd    (prep conn)
+  "Given a JDBC connection, produce metadata for a database. Uses ordered-maps to
+  preserve column ordering and to order table names by a topological sort of
+  their foreign key dependencies."
+  [conn & [adapter-opts]]
+  (let [dbmd    (prep conn adapter-opts)
         tables  (get-tables dbmd)
         columns (group-by :table_name (get-columns dbmd))
         xray    (reduce (fn [xr {:keys [table_name]}]
