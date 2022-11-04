@@ -89,11 +89,14 @@ Here's the kind of metadata it produces:
 Note that `:raw` contains more metadata but it's been elided to keep the example
 focused.
 
-You can generate basic specs from this metadata:
+You can generate basic specs or schemas from this metadata:
 
 ``` clojure
-(require '[donut.dbxray.generate.malli :as ddgm])
-(ddgm/generate (dbxray/xray connection))
+(require '[donut.dbxray :as dbx])
+(def xray (dbxray/xray connection))
+
+(dbx/malli-schema xray)
+;; =>
 [(def User
    [:map
     [:users/id {:optional? false} pos-int?]
@@ -108,6 +111,46 @@ You can generate basic specs from this metadata:
     [:todos/id {:optional? false} pos-int?]
     [:todos/todo_list_id {:optional? false} pos-int?]
     [:todos/description {:optional? false} string?]])]
+    
+(dbx/clojure-spec xray)
+;; =>
+[(s/def :users/id pos-int?)
+ (s/def :users/username string?)
+ (s/def :record/user (s/keys :req [:users/id :users/username]))
+ (s/def :todo_lists/id pos-int?)
+ (s/def :todo_lists/user_id pos-int?)
+ (s/def :todo_lists/name string?)
+ (s/def :record/todo_list
+   (s/keys :req [:todo_lists/id :todo_lists/user_id :todo_lists/name]))
+ (s/def :todos/id pos-int?)
+ (s/def :todos/todo_list_id pos-int?)
+ (s/def :todos/description string?)
+ (s/def :record/todo
+   (s/keys :req [:todos/id :todos/todo_list_id :todos/description]))]
+   
+(dbx/plumatic-schema xray)
+;; =>
+[(s/defschema
+   User
+   {(s/required-key :users/id) s/Int, (s/required-key :users/username) s/Str})
+ (s/defschema
+   TodoList
+   {(s/required-key :todo_lists/id) s/Int,
+    (s/required-key :todo_lists/user_id) s/Int,
+    (s/required-key :todo_lists/name) s/Str})
+ (s/defschema
+   Todo
+   {(s/required-key :todos/id) s/Int,
+    (s/required-key :todos/todo_list_id) s/Int,
+    (s/required-key :todos/description) s/Str})]
+
+(dbx/datapotato-schema xray)
+;; =>
+{:users      {:prefix :u}
+ :todo_lists {:prefix    :tl
+              :relations #:todo_lists{:user_id [:users :users/id]}}
+ :todos      {:prefix    :t
+              :relations #:todos{:todo_list_id [:todo_lists :todo_lists/id]}}}
 ```
 
 If you run this in a REPL you can just copy and paste it into your source code.

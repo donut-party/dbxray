@@ -2,6 +2,10 @@
   (:require
    [clojure.datafy :as df]
    [clojure.string :as str]
+   [donut.dbxray.generate.spec :as clojure-spec]
+   [donut.dbxray.generate.plumatic-schema :as plumatic-schema]
+   [donut.dbxray.generate.malli :as malli]
+   [donut.dbxray.generate.datapotato :as datapotato]
    [flatland.ordered.map :as omap]
    [next.jdbc :as jdbc]
    [next.jdbc.datafy :as njdf]
@@ -182,17 +186,11 @@
             (omap/ordered-map)
             (table-order xray))))
 
-(defn clojure-spec
-  [xray])
-
-(defn malli-schema
-  [xray])
-
-(defn plumatic-schema
-  [xray])
-
-(defn datapotato-schema
-  [xray])
+;; convenience aliases
+(def clojure-spec clojure-spec/generate)
+(def malli-schema malli/generate)
+(def plumatic-schema plumatic-schema/generate)
+(def datapotato-schema datapotato/generate)
 
 
 (comment
