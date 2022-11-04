@@ -15,7 +15,7 @@
   [table-name]
   (-> table-name
       inflections/singular
-      (csk/->PascalCaseSymbol table-name)))
+      csk/->PascalCaseSymbol))
 
 (defn- column-spec-name
   [table-name column-name]
