@@ -182,6 +182,19 @@
             (omap/ordered-map)
             (table-order xray))))
 
+(defn clojure-spec
+  [xray])
+
+(defn malli-schema
+  [xray])
+
+(defn plumatic-schema
+  [xray])
+
+(defn datapotato-schema
+  [xray])
+
+
 (comment
   (get-index-info (prep (jdbc/get-connection
                          {:dbtype "mysql", :dbname "dbxray_test", :user "root"}))

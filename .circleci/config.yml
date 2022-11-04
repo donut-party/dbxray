@@ -5,8 +5,33 @@ jobs:
       - _JAVA_OPTIONS: "-Xms512m -Xmx1024m"
     docker:
       - image: cimg/clojure:1.11.1-openjdk-8.0-node
+        environment:
+          MYSQL_ROOT_PASSWORD: root
+     - image: cimg/mysql:8.0
+        environment:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: dbxray_test
+          MYSQL_USER: user
+          MYSQL_PASSWORD: password
+        auth:
+          username: nonrecursive
+          password: $DOCKERHUB_PASSWORD  # context / project UI env-var reference
     steps:
       - checkout
+      - run: sudo apt-get update
+      - run: sudo apt-get install default-mysql-client
+      - run: sudo apt-get install sqlite3
+      - run: sudo apt-get install hsqldb server -y
+      - run:
+          name: Waiting for MySQL to be ready
+          command: |
+            for i in `seq 1 10`;
+            do
+              nc -z 127.0.0.1 3306 && echo Success && exit 0
+              echo -n .
+              sleep 1
+            done
+            echo Failed waiting for MySQL && exit 1
 
       # core
       - run:

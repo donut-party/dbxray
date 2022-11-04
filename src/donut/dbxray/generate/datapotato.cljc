@@ -1,7 +1,7 @@
 (ns donut.dbxray.generate.datapotato
   (:require
    [clojure.string :as string]
-   [donut.dbxray.generate :as ddg]))
+   [flatland.ordered.map :as omap]))
 
 (defn- table-prefix
   [table-name]
@@ -27,12 +27,12 @@
                         columns)))
            (assoc {} :relations)))
 
- (defn- table-potato-schema
-     [table-name table-data]
-     (let [{:keys [columns]} table-data
-           prefix (gen-table-prefix table-name)]
-       {table-name (merge prefix
-                          (table-relations table-name columns))}))
+(defn- table-potato-schema
+  [table-name table-data]
+  (let [{:keys [columns]} table-data
+        prefix (table-prefix table-name)]
+    {table-name (merge prefix
+                       (table-relations table-name columns))}))
 
 (defn generate
   [xray]

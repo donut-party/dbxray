@@ -1,6 +1,5 @@
 (ns donut.dbxray-test
   (:require
-   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [donut.dbxray :as dbx]
    [matcher-combinators.test] ;; adds support for `match?` and `thrown-match?` in `is` expressions
@@ -13,31 +12,13 @@
 (def ^:dynamic *dbconn*)
 
 ;;---
-;; db defs
-;;---
-
-(def typical-create-tables
-  [["CREATE TABLE parent_records ("
-    "  id           integer NOT NULL PRIMARY KEY UNIQUE AUTO_INCREMENT,"
-    "  varchar_ex   varchar(256) NOT NULL UNIQUE,"
-    "  text_ex      text,"
-    "  timestamp_ex TIMESTAMP NULL"
-    ")"]
-   ["CREATE TABLE child_records ("
-    "  id    integer PRIMARY KEY NOT NULL UNIQUE,"
-    "  fk_id integer NOT NULL,"
-    "  FOREIGN KEY(fk_id)"
-    "    REFERENCES parent_records(id)"
-    ")"]])
-
-;;---
 ;; helpers
 ;;---
 
 (defn execute-many!
   [conn stmts]
   (doseq [stmt stmts]
-    (jdbc/execute! conn [(str/join "" stmt)])))
+    (jdbc/execute! conn [stmt])))
 
 (defn create-tables
   [conn create-table-statements]
@@ -107,18 +88,18 @@
 (def ^:private test-postgres
   {:dbtype        "embedded-postgres"
    :dbname        "dbxray_test"
-   :create-tables [["CREATE TABLE parent_records ("
-                    "  id           serial NOT NULL PRIMARY KEY UNIQUE,"
-                    "  varchar_ex   varchar(256) NOT NULL UNIQUE,"
-                    "  text_ex      text,"
-                    "  timestamp_ex TIMESTAMP NULL"
-                    ")"]
-                   ["CREATE TABLE child_records ("
-                    "  id    integer PRIMARY KEY NOT NULL UNIQUE,"
-                    "  fk_id integer NOT NULL,"
-                    "  FOREIGN KEY(fk_id)"
-                    "    REFERENCES parent_records(id)"
-                    ")"]]})
+   :create-tables [(str "CREATE TABLE parent_records ("
+                        "  id           serial NOT NULL PRIMARY KEY UNIQUE,"
+                        "  varchar_ex   varchar(256) NOT NULL UNIQUE,"
+                        "  text_ex      text,"
+                        "  timestamp_ex TIMESTAMP NULL"
+                        ")")
+                   (str "CREATE TABLE child_records ("
+                        "  id    integer PRIMARY KEY NOT NULL UNIQUE,"
+                        "  fk_id integer NOT NULL,"
+                        "  FOREIGN KEY(fk_id)"
+                        "    REFERENCES parent_records(id)"
+                        ")")]})
 
 (deftest postgresql-test
   (assert-vendor-data-matches
@@ -150,18 +131,19 @@
   {:dbtype        "mysql"
    :dbname        "dbxray_test"
    :user          "root"
-   :create-tables [["CREATE TABLE parent_records ("
-                    "  id           integer NOT NULL PRIMARY KEY UNIQUE AUTO_INCREMENT,"
-                    "  varchar_ex   varchar(256) NOT NULL UNIQUE,"
-                    "  text_ex      text,"
-                    "  timestamp_ex TIMESTAMP NULL"
-                    ")"]
-                   ["CREATE TABLE child_records ("
-                    "  id    integer PRIMARY KEY NOT NULL UNIQUE,"
-                    "  fk_id integer NOT NULL,"
-                    "  FOREIGN KEY(fk_id)"
-                    "    REFERENCES parent_records(id)"
-                    ")"]]})
+   :password      (System/getenv "MYSQL_ROOT_PASSWORD")
+   :create-tables [(str "CREATE TABLE parent_records ("
+                        "  id           integer NOT NULL PRIMARY KEY UNIQUE AUTO_INCREMENT,"
+                        "  varchar_ex   varchar(256) NOT NULL UNIQUE,"
+                        "  text_ex      text,"
+                        "  timestamp_ex TIMESTAMP NULL"
+                        ")")
+                   (str "CREATE TABLE child_records ("
+                        "  id    integer PRIMARY KEY NOT NULL UNIQUE,"
+                        "  fk_id integer NOT NULL,"
+                        "  FOREIGN KEY(fk_id)"
+                        "    REFERENCES parent_records(id)"
+                        ")")]})
 
 (deftest mysql-test
   (assert-vendor-data-matches
@@ -190,18 +172,18 @@
 ;;---
 
 (def sqlite-create-tables
-  [["CREATE TABLE parent_records ("
-    "  id           integer NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,"
-    "  varchar_ex   varchar(256) NOT NULL UNIQUE,"
-    "  text_ex      text,"
-    "  timestamp_ex TIMESTAMP NULL"
-    ")"]
-   ["CREATE TABLE child_records ("
-    "  id    integer PRIMARY KEY NOT NULL UNIQUE,"
-    "  fk_id integer NOT NULL,"
-    "  FOREIGN KEY(fk_id)"
-    "    REFERENCES parent_records(id)"
-    ")"]])
+  [(str "CREATE TABLE parent_records ("
+        "  id           integer NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,"
+        "  varchar_ex   varchar(256) NOT NULL UNIQUE,"
+        "  text_ex      text,"
+        "  timestamp_ex TIMESTAMP NULL"
+        ")")
+   (str "CREATE TABLE child_records ("
+        "  id    integer PRIMARY KEY NOT NULL UNIQUE,"
+        "  fk_id integer NOT NULL,"
+        "  FOREIGN KEY(fk_id)"
+        "    REFERENCES parent_records(id)"
+        ")")])
 
 (def ^:private test-sqlite-mem
   {:dbtype         "sqlite"
@@ -213,68 +195,49 @@
    :dbname        "sqlite.db"
    :create-tables sqlite-create-tables})
 
-(deftest sqlite-test
-  (assert-vendor-data-matches
-   test-sqlite-fs
-   {:parent_records {:columns {:id           {:raw {:type_name   "INTEGER"
-                                                    :column_name "id"
-                                                    :is_nullable "NO"}}
-                               :varchar_ex   {:raw {:type_name   "VARCHAR(256)"
-                                                    :column_name "varchar_ex"
-                                                    :is_nullable "NO"}}
-                               :text_ex      {:raw {:type_name   "TEXT"
-                                                    :column_name "text_ex"
-                                                    :is_nullable "YES"}}
-                               :timestamp_ex {:raw {:type_name   "TIMESTAMP"
-                                                    :column_name "timestamp_ex"
-                                                    :is_nullable "YES"}}}}
-    :child_records  {:columns {:id    {:raw {:type_name   "INTEGER"
-                                             :column_name "id"
-                                             :is_nullable "NO"}}
-                               :fk_id {:raw {:type_name   "INTEGER"
-                                             :column_name "fk_id"
-                                             :is_nullable "NO"}}}}})
+(def ^:private sqlite-result
+  {:parent_records {:columns {:id           {:raw {:type_name   "INTEGER"
+                                                   :column_name "id"
+                                                   :is_nullable "NO"}}
+                              :varchar_ex   {:raw {:type_name   "VARCHAR(256)"
+                                                   :column_name "varchar_ex"
+                                                   :is_nullable "NO"}}
+                              :text_ex      {:raw {:type_name   "TEXT"
+                                                   :column_name "text_ex"
+                                                   :is_nullable "YES"}}
+                              :timestamp_ex {:raw {:type_name   "TIMESTAMP"
+                                                   :column_name "timestamp_ex"
+                                                   :is_nullable "YES"}}}}
+   :child_records  {:columns {:id    {:raw {:type_name   "INTEGER"
+                                            :column_name "id"
+                                            :is_nullable "NO"}}
+                              :fk_id {:raw {:type_name   "INTEGER"
+                                            :column_name "fk_id"
+                                            :is_nullable "NO"}}}}})
 
-  (assert-vendor-data-matches
-   test-sqlite-mem
-   {:parent_records {:columns {:id           {:raw {:type_name   "INTEGER"
-                                                    :column_name "id"
-                                                    :is_nullable "NO"}}
-                               :varchar_ex   {:raw {:type_name   "VARCHAR(256)"
-                                                    :column_name "varchar_ex"
-                                                    :is_nullable "NO"}}
-                               :text_ex      {:raw {:type_name   "TEXT"
-                                                    :column_name "text_ex"
-                                                    :is_nullable "YES"}}
-                               :timestamp_ex {:raw {:type_name   "TIMESTAMP"
-                                                    :column_name "timestamp_ex"
-                                                    :is_nullable "YES"}}}}
-    :child_records  {:columns {:id    {:raw {:type_name   "INTEGER"
-                                             :column_name "id"
-                                             :is_nullable "NO"}}
-                               :fk_id {:raw {:type_name   "INTEGER"
-                                             :column_name "fk_id"
-                                             :is_nullable "NO"}}}}}))
+(deftest sqlite-test
+  (assert-vendor-data-matches test-sqlite-fs sqlite-result)
+  (assert-vendor-data-matches test-sqlite-mem sqlite-result))
 
 (def ^:private test-h2
   {:dbtype        "h2"
    :dbname        "dbxray_test"
    :user          "root"
-   :create-tables [["CREATE TABLE parent_records ("
-                    "  id           integer NOT NULL IDENTITY PRIMARY KEY,"
-                    "  varchar_ex   varchar(256) NOT NULL,"
-                    "  text_ex      text,"
-                    "  timestamp_ex TIMESTAMP NULL,"
-                    "  UNIQUE(id),"
-                    "  UNIQUE(varchar_ex)"
-                    ")"]
-                   ["CREATE TABLE child_records ("
-                    "  id    integer PRIMARY KEY NOT NULL,"
-                    "  fk_id integer NOT NULL,"
-                    "  FOREIGN KEY(fk_id)"
-                    "    REFERENCES parent_records(id),"
-                    "  UNIQUE(id)"
-                    ")"]]})
+   :create-tables [(str "CREATE TABLE parent_records ("
+                        "  id           integer NOT NULL IDENTITY PRIMARY KEY,"
+                        "  varchar_ex   varchar(256) NOT NULL,"
+                        "  text_ex      text,"
+                        "  timestamp_ex TIMESTAMP NULL,"
+                        "  UNIQUE(id),"
+                        "  UNIQUE(varchar_ex)"
+                        ")")
+                   (str "CREATE TABLE child_records ("
+                        "  id    integer PRIMARY KEY NOT NULL,"
+                        "  fk_id integer NOT NULL,"
+                        "  FOREIGN KEY(fk_id)"
+                        "    REFERENCES parent_records(id),"
+                        "  UNIQUE(id)"
+                        ")")]})
 
 ;;---
 ;; h2
@@ -327,18 +290,18 @@
   {:dbtype        "hsql"
    :dbname        "dbxray_test"
    :user          "root"
-   :create-tables [["CREATE TABLE parent_records ("
-                    "  id           integer IDENTITY PRIMARY KEY,"
-                    "  varchar_ex   varchar(256) NOT NULL UNIQUE,"
-                    "  text_ex      clob,"
-                    "  timestamp_ex TIMESTAMP NULL"
-                    ")"]
-                   ["CREATE TABLE child_records ("
-                    "  id    integer PRIMARY KEY NOT NULL,"
-                    "  fk_id integer NOT NULL,"
-                    "  FOREIGN KEY(fk_id)"
-                    "    REFERENCES parent_records(id)"
-                    ")"]]})
+   :create-tables [(str "CREATE TABLE parent_records ("
+                        "  id           integer IDENTITY PRIMARY KEY,"
+                        "  varchar_ex   varchar(256) NOT NULL UNIQUE,"
+                        "  text_ex      clob,"
+                        "  timestamp_ex TIMESTAMP NULL"
+                        ")")
+                   (str "CREATE TABLE child_records ("
+                        "  id    integer PRIMARY KEY NOT NULL,"
+                        "  fk_id integer NOT NULL,"
+                        "  FOREIGN KEY(fk_id)"
+                        "    REFERENCES parent_records(id)"
+                        ")")]})
 
 (deftest hsql-test
   (with-test-db test-hsql

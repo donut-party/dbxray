@@ -1,6 +1,6 @@
 (ns donut.dbxray.generate.spec
   (:require
-   [donut.dbxray.generate :as ddg]))
+   [inflections.core :as inflections]))
 
 (def column-types
   {:integer    'int?
@@ -12,7 +12,7 @@
 
 (defn- table-spec-name
   [table-name]
-  (keyword "record" (ddg/singularize table-name)))
+  (keyword "record" (inflections/singular table-name)))
 
 (defn- column-spec-name
   [table-name column-name]

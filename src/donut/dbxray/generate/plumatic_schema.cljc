@@ -1,7 +1,7 @@
 (ns donut.dbxray.generate.plumatic-schema
   (:require
    [camel-snake-kebab.core :as csk]
-   [donut.dbxray.generate :as ddg]))
+   [inflections.core :as inflections]))
 
 (def column-types
   {:integer    's/Int
@@ -14,7 +14,7 @@
 (defn- table-spec-name
   [table-name]
   (-> table-name
-      ddg/singularize
+      inflections/singular
       (csk/->PascalCaseSymbol table-name)))
 
 (defn- column-spec-name
