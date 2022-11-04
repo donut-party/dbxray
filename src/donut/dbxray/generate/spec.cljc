@@ -12,7 +12,7 @@
 
 (defn- table-spec-name
   [table-name]
-  (keyword "record" (inflections/singular table-name)))
+  (keyword "record" (inflections/singular (name table-name))))
 
 (defn- column-spec-name
   [table-name column-name]
