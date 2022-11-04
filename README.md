@@ -165,3 +165,13 @@ improvement. I'd love feedback / collaboration on:
   for their metadata, and dbxray attempts to provide a consistent Clojure
   representation. The translation between vendor and Clojure happens via the
   `adapter*` multimethod, and I've only implemented a couple so far.
+
+## Thanks
+
+Thanks to [Sean Corfield](https://github.com/seancorfield/) for his work on
+[next-jdbc](https://github.com/seancorfield/next-jdbc), which this relies on
+which helped me understand how to interact with JDBC.
+
+## Contributors
+
+* [Marcela Poffald](https://github.com/mpoffald)
