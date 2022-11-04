@@ -21,7 +21,7 @@ jobs:
       - run: sudo apt-get update
       - run: sudo apt-get install default-mysql-client
       - run: sudo apt-get install sqlite3
-      - run: sudo apt-get install hsqldb server -y
+      - run: sudo apt-get install hsqldb-server
       - run:
           name: Waiting for MySQL to be ready
           command: |
@@ -65,7 +65,7 @@ jobs:
 
 workflows:
   version: 2
-  deploy:
+  build:
     jobs:
       - test-and-build
       - deploy:
