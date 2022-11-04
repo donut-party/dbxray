@@ -130,19 +130,17 @@ You can generate basic specs or schemas from this metadata:
    
 (dbx/plumatic-schema xray)
 ;; =>
-[(s/defschema
-   User
-   {(s/required-key :users/id) s/Int, (s/required-key :users/username) s/Str})
- (s/defschema
-   TodoList
-   {(s/required-key :todo_lists/id) s/Int,
-    (s/required-key :todo_lists/user_id) s/Int,
-    (s/required-key :todo_lists/name) s/Str})
- (s/defschema
-   Todo
-   {(s/required-key :todos/id) s/Int,
-    (s/required-key :todos/todo_list_id) s/Int,
-    (s/required-key :todos/description) s/Str})]
+[(s/defschema User
+   {(s/required-key :users/id)       s/Int
+    (s/required-key :users/username) s/Str})
+ (s/defschema TodoList
+   {(s/required-key :todo_lists/id)      s/Int
+    (s/required-key :todo_lists/user_id) s/Int
+    (s/required-key :todo_lists/name)    s/Str})
+ (s/defschema Todo
+   {(s/required-key :todos/id)           s/Int
+    (s/required-key :todos/todo_list_id) s/Int
+    (s/required-key :todos/description)  s/Str})]
 
 (dbx/datapotato-schema xray)
 ;; =>
@@ -153,11 +151,5 @@ You can generate basic specs or schemas from this metadata:
               :relations #:todos{:todo_list_id [:todo_lists :todo_lists/id]}}}
 ```
 
-If you run this in a REPL you can just copy and paste it into your source code.
-
-The namespaces for generating specs or schemas are:
-
-* `donut.dbxray.generate.datapotato`
-* `donut.dbxray.generate.malli`
-* `donut.dbxray.generate.plumatic-schema`
-* `donut.dbxray.generate.spec`
+If you run this in a REPL you can just copy and paste the results into your
+source code.
