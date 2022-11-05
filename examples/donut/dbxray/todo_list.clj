@@ -53,6 +53,4 @@
   (create-tables (jdbc/get-connection (.getPostgresDatabase ^EmbeddedPostgres @embedded-pg))
                  [create-users create-todo-lists create-todos])
 
-  (def xray (dbx/xray @conn))
-
-  )
+  (def xray (dbx/xray @conn)))
