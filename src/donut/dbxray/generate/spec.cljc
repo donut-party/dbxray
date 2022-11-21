@@ -19,14 +19,14 @@
   (keyword (name table-name) (name column-name)))
 
 (defn- column-spec
-  [xray table-name column-name]
-  (let [{:keys [column-type primary-key? refers-to]} (get-in xray [table-name :columns column-name])]
+  [tables table-name column-name]
+  (let [{:keys [column-type primary-key? refers-to]} (get-in tables [table-name :columns column-name])]
     (list 's/def
           (column-spec-name table-name column-name)
 
           (cond
             refers-to
-            (last (column-spec xray (first refers-to) (second refers-to)))
+            (last (column-spec tables (first refers-to) (second refers-to)))
 
             (and (= :integer column-type) primary-key?)
             (:integer-pk column-types)
@@ -35,9 +35,9 @@
             (column-type column-types [:TODO/column-type-not-recognized column-type])))))
 
 (defn- column-specs
-  [xray table-name]
-  (mapv #(column-spec xray table-name %)
-        (keys (get-in xray [table-name :columns]))))
+  [tables table-name]
+  (mapv #(column-spec tables table-name %)
+        (get-in tables [table-name :column-order])))
 
 (defn- skeys-columns
   [table-name columns req?]
@@ -47,8 +47,8 @@
        (mapv #(column-spec-name table-name %))))
 
 (defn- table-spec
-  [xray table-name]
-  (let [columns     (get-in xray [table-name :columns])
+  [tables table-name]
+  (let [columns     (get-in tables [table-name :columns])
         req-columns (skeys-columns table-name columns :req)
         opt-columns (skeys-columns table-name columns :opt)]
     (list 's/def
@@ -59,10 +59,9 @@
             true              seq))))
 
 (defn generate
-  [xray]
-  (->> xray
-       keys
+  [{:keys [tables table-order]}]
+  (->> table-order
        (mapcat (fn [table-name]
-                 (conj (column-specs xray table-name)
-                       (table-spec xray table-name))))
+                 (conj (column-specs tables table-name)
+                       (table-spec tables table-name))))
        vec))

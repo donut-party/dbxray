@@ -35,8 +35,8 @@
                        (table-relations table-name columns))}))
 
 (defn generate
-  [xray]
-  (reduce (fn [generated [table-name table-data]]
-            (merge generated (table-potato-schema table-name table-data)))
+  [{:keys [tables table-order]}]
+  (reduce (fn [generated table-name]
+            (merge generated (table-potato-schema table-name (table-name tables))))
           (omap/ordered-map)
-          xray))
+          table-order))
