@@ -38,15 +38,12 @@
        (column-type column-types [:TODO/column-type-not-recognized column-type]))]))
 
 (defn generate
-  [xray]
-  (->> xray
-       keys
+  [{:keys [tables table-order]}]
+  (->> table-order
        (mapv (fn [table-name]
-               (let [table-xray (table-name xray)]
+               (let [{:keys [column-order]} (table-name tables)]
                  (list 's/defschema
                        (table-spec-name table-name)
-                       (->> table-xray
-                            :columns
-                            keys
-                            (map #(column-spec xray table-name %))
+                       (->> column-order
+                            (map #(column-spec tables table-name %))
                             (into {}))))))))

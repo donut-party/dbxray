@@ -6,11 +6,11 @@
    [donut.dbxray.generate.plumatic-schema :as plumatic-schema]
    [donut.dbxray.generate.malli :as malli]
    [donut.dbxray.generate.datapotato :as datapotato]
-   [flatland.ordered.map :as omap]
    [next.jdbc :as jdbc]
    [next.jdbc.datafy :as njdf]
    [next.jdbc.result-set :as njrs]
-   [weavejester.dependency :as dep]))
+   [weavejester.dependency :as dep]
+   [clojure.set :as set]))
 
 (def default-adapter
   {:schema-pattern nil
@@ -126,7 +126,7 @@
         pks (->> (get-primary-keys dbmd table-name) (group-by :column_name))
         ixs (->> (get-index-info dbmd table-name)   (group-by :column_name))]
     (reduce (fn [cols-map {:keys [column_name type_name] :as col}]
-              (let [raw            (-> (select-keys col [:type_name
+              (let [raw-column     (-> (select-keys col [:type_name
                                                          :column_name
                                                          :is_nullable
                                                          :is_autoincrement])
@@ -135,24 +135,23 @@
                                             first
                                             ((juxt :pktable_name :pkcolumn_name))
                                             (mapv keyword))
-                    nullable?      ((:nullable? predicates) raw)
-                    unique?        ((:unique? predicates) raw)
-                    autoincrement? ((:autoincrement? predicates) raw)
+                    nullable?      ((:nullable? predicates) raw-column)
+                    unique?        ((:unique? predicates) raw-column)
+                    autoincrement? ((:autoincrement? predicates) raw-column)
                     primary-key?   (get pks column_name)]
                 (assoc cols-map
                        (keyword column_name)
                        (cond-> {:column-type (adapt-column-type (-> type_name str/lower-case) column-types)
-                                :raw raw}
+                                :raw raw-column}
                          nullable?      (assoc :nullable? true)
                          primary-key?   (assoc :primary-key? true)
                          unique?        (assoc :unique? true)
                          autoincrement? (assoc :autoincrement? true)
                          fk-ref         (assoc :refers-to fk-ref)))))
-            (omap/ordered-map)
+            {}
             table-cols)))
 
 (defn- table-deps
-  "used to create an omap for tables"
   [xray]
   (for [[table-name table-xray] xray
         [_ column-xray]         (:columns table-xray)
@@ -160,35 +159,46 @@
         :when                   refers-to]
     [table-name refers-to]))
 
-(defn- table-order
-  "used to create an omap for tables"
-  [xray]
-  (->> (table-deps xray)
-       (reduce (fn [g [table-name dep]] (dep/depend g table-name dep))
-               (dep/graph))
-       (dep/topo-sort)))
+(defn- unconnected-tables
+  [table-xray connected-tables]
+  (let [table-names (set (keys table-xray))]
+    (->> (set/difference table-names connected-tables)
+         sort
+         vec)))
+
+(defn- table-fk-sort
+  "table names sorted by fk dependencies"
+  [table-xray]
+  (let [connected-tables (->> (table-deps table-xray)
+                              (reduce (fn [g [table-name dep]]
+                                        (try (dep/depend g table-name dep)
+                                             (catch Throwable _ g)))
+                                      (dep/graph))
+                              (dep/topo-sort))]
+    (into (unconnected-tables table-xray connected-tables)
+          connected-tables)))
 
 (defn xray
   "Given a JDBC connection, produce metadata for a database. Uses ordered-maps to
   preserve column ordering and to order table names by a topological sort of
   their foreign key dependencies."
   [conn & [adapter-opts]]
-  (let [dbmd    (prep conn adapter-opts)
-        tables  (get-tables dbmd)
-        columns (group-by :table_name (get-columns dbmd))
-        xray    (reduce (fn [xr {:keys [table_name]}]
-                          (let [table-cols (get columns table_name)]
-                            (assoc xr
-                                   (keyword table_name)
-                                   {:columns (build-columns dbmd
-                                                            table_name
-                                                            table-cols)})))
-                        {}
-                        tables)]
-    (reduce (fn [omap-xray table-name]
-              (assoc omap-xray table-name (table-name xray)))
-            (omap/ordered-map)
-            (table-order xray))))
+  (let [dbmd       (prep conn adapter-opts)
+        tables     (get-tables dbmd)
+        columns    (group-by :table_name (get-columns dbmd))
+        table-xray (reduce (fn [xr {:keys [table_name]}]
+                             (let [table-cols (get columns table_name)]
+                               (assoc xr
+                                      (keyword table_name)
+                                      {:columns      (build-columns dbmd
+                                                                    table_name
+                                                                    table-cols)
+                                       :column-order (mapv (comp keyword :column_name)
+                                                           table-cols)})))
+                           {}
+                           tables)]
+    {:tables      table-xray
+     :table-order (vec (table-fk-sort table-xray))}))
 
 ;; convenience aliases
 (def clojure-spec clojure-spec/generate)
