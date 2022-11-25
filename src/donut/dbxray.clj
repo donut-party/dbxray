@@ -62,8 +62,10 @@
   [conn & [adapter-opts]]
   (let [metadata (.getMetaData conn)
         dbtype   (database-product-name metadata)
-        dbmd     {:metadata metadata
-                  :dbtype   dbtype}]
+        dbmd     {:metadata     metadata
+                  :dbtype       dbtype
+                  :catalog      (-> metadata .getConnection .getCatalog)
+                  :include-raw? (:include-raw? adapter-opts)}]
     (assoc dbmd :dbadapter (merge (adapter dbmd) adapter-opts))))
 
 (defn datafy-result-set
@@ -75,38 +77,38 @@
 ;; see https://docs.oracle.com/javase/8/docs/api/java/sql/DatabaseMetaData.html
 
 (defn get-index-info
-  [{:keys [metadata dbadapter]} & [table-name]]
+  [{:keys [metadata dbadapter catalog]} & [table-name]]
   (binding [njdf/*datafy-failure* :omit]
     (-> metadata
-        (.getIndexInfo nil (:schema-pattern dbadapter) table-name true true)
+        (.getIndexInfo catalog (:schema-pattern dbadapter) table-name true true)
         datafy-result-set)))
 
 (defn get-columns
-  [{:keys [metadata dbadapter]} & [table-name]]
+  [{:keys [metadata dbadapter catalog]} & [table-name]]
   (binding [njdf/*datafy-failure* :omit]
     (-> metadata
-        (.getColumns nil (:schema-pattern dbadapter) table-name nil)
+        (.getColumns catalog (:schema-pattern dbadapter) table-name nil)
         datafy-result-set)))
 
 (defn get-foreign-keys
-  [{:keys [metadata dbadapter]} & [table-name]]
+  [{:keys [metadata dbadapter catalog]} & [table-name]]
   (binding [njdf/*datafy-failure* :omit]
     (-> metadata
-        (.getImportedKeys nil (:schema-pattern dbadapter) table-name)
+        (.getImportedKeys catalog (:schema-pattern dbadapter) table-name)
         datafy-result-set)))
 
 (defn get-primary-keys
-  [{:keys [metadata dbadapter]} & [table-name]]
+  [{:keys [metadata dbadapter catalog]} & [table-name]]
   (binding [njdf/*datafy-failure* :omit]
     (-> metadata
-        (.getPrimaryKeys nil (:schema-pattern dbadapter) table-name)
+        (.getPrimaryKeys catalog (:schema-pattern dbadapter) table-name)
         datafy-result-set)))
 
 (defn get-tables
-  [{:keys [metadata dbadapter]}]
+  [{:keys [metadata dbadapter catalog]}]
   (binding [njdf/*datafy-failure* :omit]
     (-> metadata
-        (.getTables nil (:schema-pattern dbadapter) nil (into-array ["TABLE"]))
+        (.getTables catalog (:schema-pattern dbadapter) nil (into-array ["TABLE"]))
         datafy-result-set)))
 
 (defn- adapt-column-type
@@ -119,7 +121,9 @@
       (keyword raw-col-type))))
 
 (defn build-columns
-  [{{:keys [predicates column-types]} :dbadapter :as dbmd}
+  [{{:keys [predicates column-types]} :dbadapter
+    :keys [include-raw?]
+    :as dbmd}
    table-name
    table-cols]
   (let [fks (->> (get-foreign-keys dbmd table-name) (group-by :fkcolumn_name))
@@ -141,8 +145,8 @@
                     primary-key?   (get pks column_name)]
                 (assoc cols-map
                        (keyword column_name)
-                       (cond-> {:column-type (adapt-column-type (-> type_name str/lower-case) column-types)
-                                :raw raw-column}
+                       (cond-> {:column-type (adapt-column-type (-> type_name str/lower-case) column-types)}
+                         include-raw?   (assoc :raw raw-column)
                          nullable?      (assoc :nullable? true)
                          primary-key?   (assoc :primary-key? true)
                          unique?        (assoc :unique? true)
@@ -162,7 +166,7 @@
 (defn- unconnected-tables
   [table-xray connected-tables]
   (let [table-names (set (keys table-xray))]
-    (->> (set/difference table-names connected-tables)
+    (->> (set/difference table-names (set connected-tables))
          sort
          vec)))
 
@@ -179,9 +183,10 @@
           connected-tables)))
 
 (defn xray
-  "Given a JDBC connection, produce metadata for a database. Uses ordered-maps to
-  preserve column ordering and to order table names by a topological sort of
-  their foreign key dependencies."
+  "Given a JDBC connection, produce metadata for a database. Includes raw metadata
+  for columns.
+
+  use `:include-raw? true` in `adapter-opts` to include raw metadata"
   [conn & [adapter-opts]]
   (let [dbmd       (prep conn adapter-opts)
         tables     (get-tables dbmd)
@@ -218,4 +223,12 @@
   (with-open [conn (jdbc/get-connection {:dbtype "sqlite", :dbname "sqlite.db"})]
     (-> (.getMetaData conn)
         (.getTables nil nil nil nil)
-        clojure.datafy/datafy)))
+        clojure.datafy/datafy))
+
+  (-> {:dbtype "mysql", :dbname "dbxray_test", :user "root"}
+      jdbc/get-connection
+      prep
+      :metadata
+      .getCatalogs
+      datafy-result-set
+      ))

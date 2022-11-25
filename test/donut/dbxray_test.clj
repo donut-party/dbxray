@@ -82,10 +82,10 @@
    [:unconnected_records :parent_records :child_records]})
 
 (defn assert-vendor-data-matches
-  [test-db result-extras]
+  [test-db adapter-opts result-extras]
   (with-test-db test-db
     (is (match? (deep-merge typical-core-result result-extras)
-                (dbx/xray *dbconn*)))))
+                (dbx/xray *dbconn* adapter-opts)))))
 
 
 ;;---
@@ -96,7 +96,7 @@
 ;; postgres
 ;;---
 
-(def ^:private test-postgres
+(def ^:private postgres-config
   {:dbtype        "embedded-postgres"
    :dbname        "dbxray_test"
    :create-tables [(str "CREATE TABLE parent_records ("
@@ -116,32 +116,36 @@
                         ")")]})
 
 (deftest postgresql-test
-  (assert-vendor-data-matches
-   test-postgres
-   {:tables {:parent_records {:columns {:id           {:raw {:type_name   "serial"
-                                                             :column_name "id"
-                                                             :is_nullable "NO"}}
-                                        :varchar_ex   {:raw {:type_name   "varchar"
-                                                             :column_name "varchar_ex"
-                                                             :is_nullable "NO"}}
-                                        :text_ex      {:raw {:type_name   "text"
-                                                             :column_name "text_ex"
-                                                             :is_nullable "YES"}}
-                                        :timestamp_ex {:raw {:type_name   "timestamp"
-                                                             :column_name "timestamp_ex"
-                                                             :is_nullable "YES"}}}}
-             :child_records  {:columns {:id    {:raw {:type_name   "int4"
-                                                      :column_name "id"
-                                                      :is_nullable "NO"}}
-                                        :fk_id {:raw {:type_name   "int4"
-                                                      :column_name "fk_id"
-                                                      :is_nullable "NO"}}}}}}))
+  (testing "with raw data"
+    (assert-vendor-data-matches
+     postgres-config
+     {:include-raw? true}
+     {:tables {:parent_records {:columns {:id           {:raw {:type_name   "serial"
+                                                               :column_name "id"
+                                                               :is_nullable "NO"}}
+                                          :varchar_ex   {:raw {:type_name   "varchar"
+                                                               :column_name "varchar_ex"
+                                                               :is_nullable "NO"}}
+                                          :text_ex      {:raw {:type_name   "text"
+                                                               :column_name "text_ex"
+                                                               :is_nullable "YES"}}
+                                          :timestamp_ex {:raw {:type_name   "timestamp"
+                                                               :column_name "timestamp_ex"
+                                                               :is_nullable "YES"}}}}
+               :child_records  {:columns {:id    {:raw {:type_name   "int4"
+                                                        :column_name "id"
+                                                        :is_nullable "NO"}}
+                                          :fk_id {:raw {:type_name   "int4"
+                                                        :column_name "fk_id"
+                                                        :is_nullable "NO"}}}}}}))
+  (testing "without raw data"
+    (assert-vendor-data-matches postgres-config {} {})))
 
 ;;---
 ;; mysql
 ;;---
 
-(def ^:private test-mysql
+(def ^:private mysql-config
   {:dbtype        "mysql"
    :dbname        "dbxray_test"
    :user          "root"
@@ -163,27 +167,31 @@
                         ")")]})
 
 (deftest mysql-test
-  (assert-vendor-data-matches
-   test-mysql
-   {:tables
-    {:parent_records {:columns {:id           {:raw {:type_name   "INT"
-                                                     :column_name "id"
-                                                     :is_nullable "NO"}}
-                                :varchar_ex   {:raw {:type_name   "VARCHAR"
-                                                     :column_name "varchar_ex"
-                                                     :is_nullable "NO"}}
-                                :text_ex      {:raw {:type_name   "TEXT"
-                                                     :column_name "text_ex"
-                                                     :is_nullable "YES"}}
-                                :timestamp_ex {:raw {:type_name   "TIMESTAMP"
-                                                     :column_name "timestamp_ex"
-                                                     :is_nullable "YES"}}}}
-     :child_records  {:columns {:id    {:raw {:type_name   "INT"
-                                              :column_name "id"
-                                              :is_nullable "NO"}}
-                                :fk_id {:raw {:type_name   "INT"
-                                              :column_name "fk_id"
-                                              :is_nullable "NO"}}}}}}))
+  (testing "with raw data"
+    (assert-vendor-data-matches
+     mysql-config
+     {:include-raw? true}
+     {:tables
+      {:parent_records {:columns {:id           {:raw {:type_name   "INT"
+                                                       :column_name "id"
+                                                       :is_nullable "NO"}}
+                                  :varchar_ex   {:raw {:type_name   "VARCHAR"
+                                                       :column_name "varchar_ex"
+                                                       :is_nullable "NO"}}
+                                  :text_ex      {:raw {:type_name   "TEXT"
+                                                       :column_name "text_ex"
+                                                       :is_nullable "YES"}}
+                                  :timestamp_ex {:raw {:type_name   "TIMESTAMP"
+                                                       :column_name "timestamp_ex"
+                                                       :is_nullable "YES"}}}}
+       :child_records  {:columns {:id    {:raw {:type_name   "INT"
+                                                :column_name "id"
+                                                :is_nullable "NO"}}
+                                  :fk_id {:raw {:type_name   "INT"
+                                                :column_name "fk_id"
+                                                :is_nullable "NO"}}}}}}))
+  (testing "without raw data"
+    (assert-vendor-data-matches mysql-config {} {})))
 
 ;;---
 ;; sqlite
@@ -206,12 +214,12 @@
         " id integer PRIMARY KEY NOT NULL UNIQUE"
         ")")])
 
-(def ^:private test-sqlite-mem
+(def ^:private sqlite-mem-config
   {:dbtype         "sqlite"
    :connection-uri "jdbc:sqlite::memory:"
    :create-tables  sqlite-create-tables})
 
-(def ^:private test-sqlite-fs
+(def ^:private sqlite-fs-config
   {:dbtype        "sqlite"
    :dbname        "sqlite.db"
    :create-tables sqlite-create-tables})
@@ -238,14 +246,16 @@
                                              :is_nullable "NO"}}}}}})
 
 (deftest sqlite-test
-  (assert-vendor-data-matches test-sqlite-fs sqlite-result)
-  (assert-vendor-data-matches test-sqlite-mem sqlite-result))
+  (assert-vendor-data-matches sqlite-fs-config {:include-raw? true} sqlite-result)
+  (assert-vendor-data-matches sqlite-fs-config {} {})
+  (assert-vendor-data-matches sqlite-mem-config {:include-raw? true} sqlite-result)
+  (assert-vendor-data-matches sqlite-mem-config {} {}))
 
 ;;---
 ;; h2
 ;;---
 
-(def ^:private test-h2
+(def ^:private h2-config
   {:dbtype        "h2"
    :dbname        "dbxray_test"
    :user          "root"
@@ -269,7 +279,7 @@
                         ")")]})
 
 (deftest h2-test
-  (with-test-db test-h2
+  (with-test-db h2-config
     (is (match?
          {:tables
           {:PARENT_RECORDS
@@ -311,13 +321,13 @@
 
           :table-order
           [:UNCONNECTED_RECORDS :PARENT_RECORDS :CHILD_RECORDS]}
-         (dbx/xray *dbconn*)))))
+         (dbx/xray *dbconn* {:include-raw? true})))))
 
 ;;---
 ;; hsql
 ;;---
 
-(def ^:private test-hsql
+(def ^:private hsql-config
   {:dbtype        "hsql"
    :dbname        "dbxray_test"
    :user          "root"
@@ -338,7 +348,7 @@
                         ")")]})
 
 (deftest hsql-test
-  (with-test-db test-hsql
+  (with-test-db hsql-config
     (is
      (match?
       {:tables
@@ -377,7 +387,7 @@
                                                          :is_nullable "NO"}}}}}
        :table-order
        [:UNCONNECTED_RECORDS :PARENT_RECORDS :CHILD_RECORDS]}
-      (dbx/xray *dbconn*)))))
+      (dbx/xray *dbconn* {:include-raw? true})))))
 
 
 ;;---
@@ -386,6 +396,6 @@
 
 (comment
   "to try out table creation"
-  (let [dbconf test-hsql]
+  (let [dbconf hsql-config]
     (with-open [conn (jdbc/get-connection dbconf)]
       (create-tables conn (:create-tables dbconf)))))

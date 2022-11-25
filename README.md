@@ -50,44 +50,52 @@ Here's the kind of metadata it produces:
    ")"))
 
 ;; dbxray produces this metadata:
-(dbxray/xray @conn) ;; =>
+(dbxray/xray @conn {:include-raw? true}) ;; =>
 
-{:users
- {:columns {:id       {:column-type    :integer
-                       :raw            {...}
-                       :primary-key?   true
-                       :unique?        true
-                       :autoincrement? true}
-            :username {:column-type :varchar
-                       :raw         {...}
-                       :unique?     true}}}
+{:tables
+ {:users
+  {:columns      {:id       {:column-type    :integer
+                             :raw            {...}
+                             :primary-key?   true
+                             :unique?        true
+                             :autoincrement? true}
+                  :username {:column-type :varchar
+                             :raw         {...}
+                             :unique?     true}}
+   :column-order [:id :username]}
 
- :todo_lists
- {:columns {:id      {:column-type    :integer
-                      :raw            {...}
-                      :primary-key?   true
-                      :unique?        true
-                      :autoincrement? true}
-            :user_id {:column-type :integer
-                      :raw         {...}
-                      :refers-to   [:users :id]}
-            :name    {:column-type :varchar
-                      :raw         {...}}}}
- :todos
- {:columns {:id           {:column-type    :integer
-                           :raw            {...}
-                           :primary-key?   true
-                           :unique?        true
-                           :autoincrement? true}
-            :todo_list_id {:column-type :integer
-                           :raw         {...}
-                           :refers-to   [:todo_lists :id]}
-            :description  {:column-type :varchar
-                           :raw         {...}}}}}
+  :todo_lists
+  {:columns      {:id      {:column-type    :integer
+                            :raw            {...}
+                            :primary-key?   true
+                            :unique?        true
+                            :autoincrement? true}
+                  :user_id {:column-type :integer
+                            :raw         {...}
+                            :refers-to   [:users :id]}
+                  :name    {:column-type :varchar
+                            :raw         {...}}}
+   :column-order [:id :user_id :name]}
+  :todos
+  {:columns      {:id           {:column-type    :integer
+                                 :raw            {...}
+                                 :primary-key?   true
+                                 :unique?        true
+                                 :autoincrement? true}
+                  :todo_list_id {:column-type :integer
+                                 :raw         {...}
+                                 :refers-to   [:todo_lists :id]}
+                  :description  {:column-type :varchar
+                                 :raw         {...}}}
+   :column-order [:id :todo_list_id :description]}}
+
+ :table-order
+ [:users :todo_lists :todos]}
 ```
 
-Note that `:raw` contains more metadata but it's been elided to keep the example
-focused.
+Note that you must pass in `{:include-raw? true}` as the second argument to
+`xray` to include raw metata. `:raw` has been been elided
+to keep the example focused.
 
 You can generate basic specs or schemas from this metadata:
 
@@ -165,6 +173,9 @@ improvement. I'd love feedback / collaboration on:
   for their metadata, and dbxray attempts to provide a consistent Clojure
   representation. The translation between vendor and Clojure happens via the
   `adapter*` multimethod, and I've only implemented a couple so far.
+
+Join the [#donut channel in Clojurians
+slack](https://clojurians.slack.com/archives/C030C4Z2W0Y) for discussion
 
 ## Thanks
 
