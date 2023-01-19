@@ -50,7 +50,7 @@ Here's the kind of metadata it produces:
    ")"))
 
 ;; dbxray produces this metadata:
-(dbxray/xray @conn {:include-raw? true}) ;; =>
+(dbx/xray @conn {:include-raw? true}) ;; =>
 
 {:tables
  {:users
@@ -101,7 +101,7 @@ You can generate basic specs or schemas from this metadata:
 
 ``` clojure
 (require '[donut.dbxray :as dbx])
-(def xray (dbxray/xray connection))
+(def xray (dbx/xray connection))
 
 (dbx/malli-schema xray)
 ;; =>
