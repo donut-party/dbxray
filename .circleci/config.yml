@@ -3,6 +3,7 @@ jobs:
   test-and-build:
     environment:
       - _JAVA_OPTIONS: "-Xms512m -Xmx1024m"
+
     docker:
       - image: cimg/clojure:1.11.1-openjdk-8.0-node
         environment:
@@ -13,14 +14,16 @@ jobs:
           MYSQL_DATABASE: dbxray_test
           MYSQL_USER: user
           MYSQL_PASSWORD: password
-        auth:
-          username: nonrecursive
-          password: $DOCKERHUB_PASSWORD  # context / project UI env-var reference
+
     steps:
       - checkout
+
       - run: sudo apt-get update
+
       - run: sudo apt-get install default-mysql-client
+
       - run: sudo apt-get install sqlite3
+
       - run:
           name: Waiting for MySQL to be ready
           command: |
@@ -34,8 +37,9 @@ jobs:
 
       # core
       - run:
-          name: test dbxray clj
+          name: Run tests
           command: clojure -X:test
+
       - run:
           name: Build dbxray
           command: clojure -T:build jar
@@ -45,19 +49,25 @@ jobs:
             - ~/bin
             - ~/.m2
           key: donut-{{ checksum "deps.edn" }}
+
       - persist_to_workspace:
           root: ./
           paths:
             - ./
+
   deploy:
     docker:
       - image: cimg/clojure:1.11.1-openjdk-8.0-node
+
     steps:
       - checkout
+
       - restore_cache:
           key: dbxray-{{ checksum "deps.edn" }}
+
       - attach_workspace:
           at: ./
+
       - run:
           name: Deploy dbxray to clojars
           command: clojure -T:build deploy
@@ -67,10 +77,13 @@ workflows:
   build:
     jobs:
       - test-and-build
+
       - deploy:
           filters:
             branches:
               only:
-                - release
+                - master 
           requires:
             - test-and-build
+          context:
+            - clojars_deployment

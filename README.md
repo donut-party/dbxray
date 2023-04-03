@@ -1,4 +1,5 @@
-[![Clojars Project](https://img.shields.io/clojars/v/party.donut/dbxray.svg)](https://clojars.org/party.donut/dbxray)
+[![Clojars Project](https://img.shields.io/clojars/v/motivai/dbxray.svg)]
+  (https://clojars.org/motiva/dbxray)
 
 
 dbxray provides metadata about JDBC databases and uses that data to generate

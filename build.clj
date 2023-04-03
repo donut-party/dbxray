@@ -12,28 +12,31 @@
   (:require [clojure.tools.build.api :as b]
             [org.corfield.build :as bb]))
 
-(def lib 'party.donut/dbxray)
-(def version (format "0.0.%s" (b/git-count-revs nil)))
 
-(defn deploy "Deploy the JAR to Clojars"
+(def lib 'ai.motiva/dbxray)
+(def version "0.1.0")
+
+
+(defn deploy
+  "Deploy the JAR to Clojars"
   [opts]
   (-> opts
       (assoc :lib lib :version version)
       (bb/deploy)))
 
 
-(defn jar "build a jar"
+(defn jar
+  "Builds a jar"
   [opts]
   (-> opts
       (assoc :lib lib :version version)
       (bb/clean)
       (bb/jar)))
 
-(defn install "Install the JAR locally." [opts]
+
+(defn install
+  "Install the JAR locally."
+  [opts]
   (-> opts
       (assoc :lib lib :version version)
       (bb/install)))
-
-(defn test "Run basic tests." [opts]
-  (-> opts
-      (bb/run-tests)))
