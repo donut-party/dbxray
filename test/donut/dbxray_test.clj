@@ -41,16 +41,14 @@
          (testing (str "db: " test-db#)
            ~@body)))))
 
-;; Copied verbatim from the defunct clojure-contrib (http://bit.ly/deep-merge-with)
-(defn deep-merge-with [f & maps]
-  (apply
-   (fn m [& maps]
-     (if (every? map? maps)
-       (apply merge-with m maps)
-       (apply f maps)))
-   maps))
-
-(def deep-merge (partial deep-merge-with merge))
+;; Copied verbatim from https://gist.github.com/danielpcox/c70a8aa2c36766200a95
+(defn deep-merge [v & vs]
+  (letfn [(rec-merge [v1 v2]
+            (if (and (map? v1) (map? v2))
+              (merge-with deep-merge v1 v2)
+              v2))]
+    (when (some identity vs)
+      (reduce #(rec-merge %1 %2) v vs))))
 
 (def typical-core-result
   "Most vendors return something that looks like this"
@@ -157,7 +155,7 @@
                         "  id           integer NOT NULL PRIMARY KEY UNIQUE AUTO_INCREMENT,"
                         "  varchar_ex   varchar(256) NOT NULL UNIQUE,"
                         "  text_ex      text,"
-                        "  timestamp_ex TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP"
+                        "  timestamp_ex TIMESTAMP DEFAULT CURRENT_TIMESTAMP NULL"
                         ")")
                    (str "CREATE TABLE child_records ("
                         "  id    integer PRIMARY KEY NOT NULL UNIQUE,"
@@ -341,7 +339,7 @@
                         "  id           integer IDENTITY PRIMARY KEY,"
                         "  varchar_ex   varchar(256) NOT NULL UNIQUE,"
                         "  text_ex      clob,"
-                        "  timestamp_ex TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP"
+                        "  timestamp_ex TIMESTAMP DEFAULT CURRENT_TIMESTAMP NULL"
                         ")")
                    (str "CREATE TABLE child_records ("
                         "  id    integer PRIMARY KEY NOT NULL,"

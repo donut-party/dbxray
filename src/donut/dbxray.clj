@@ -130,7 +130,6 @@
         pks (->> (get-primary-keys dbmd table-name) (group-by :column_name))
         ixs (->> (get-index-info dbmd table-name)   (group-by :column_name))]
     (reduce (fn [cols-map {:keys [column_name type_name] :as col}]
-              (prn col)
               (let [raw-column     (assoc col :indexes (get ixs column_name))
                     fk-ref         (some->> (get fks column_name)
                                             first
