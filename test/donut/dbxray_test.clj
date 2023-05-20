@@ -65,7 +65,8 @@
                       :text_ex      {:column-type :text
                                      :nullable?   true}
                       :timestamp_ex {:column-type :timestamp
-                                     :nullable?   true}}
+                                     :nullable?   true
+                                     :default     "CURRENT_TIMESTAMP"}}
                      :column-order
                      [:id :varchar_ex :text_ex :timestamp_ex]}
     :child_records  {:columns
@@ -103,7 +104,7 @@
                         "  id           serial NOT NULL PRIMARY KEY UNIQUE,"
                         "  varchar_ex   varchar(256) NOT NULL UNIQUE,"
                         "  text_ex      text,"
-                        "  timestamp_ex TIMESTAMP NULL"
+                        "  timestamp_ex TIMESTAMP NULL DEFAULT now()"
                         ")")
                    (str "CREATE TABLE child_records ("
                         "  id    integer PRIMARY KEY NOT NULL UNIQUE,"
@@ -129,9 +130,11 @@
                                           :text_ex      {:raw {:type_name   "text"
                                                                :column_name "text_ex"
                                                                :is_nullable "YES"}}
-                                          :timestamp_ex {:raw {:type_name   "timestamp"
-                                                               :column_name "timestamp_ex"
-                                                               :is_nullable "YES"}}}}
+                                          :timestamp_ex {:default    "now()"
+                                                         :raw        {:type_name   "timestamp"
+                                                                      :column_name "timestamp_ex"
+                                                                      :is_nullable "YES"
+                                                                      :column_def  "now()"}}}}
                :child_records  {:columns {:id    {:raw {:type_name   "int4"
                                                         :column_name "id"
                                                         :is_nullable "NO"}}
@@ -154,7 +157,7 @@
                         "  id           integer NOT NULL PRIMARY KEY UNIQUE AUTO_INCREMENT,"
                         "  varchar_ex   varchar(256) NOT NULL UNIQUE,"
                         "  text_ex      text,"
-                        "  timestamp_ex TIMESTAMP NULL"
+                        "  timestamp_ex TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP"
                         ")")
                    (str "CREATE TABLE child_records ("
                         "  id    integer PRIMARY KEY NOT NULL UNIQUE,"
@@ -183,7 +186,8 @@
                                                        :is_nullable "YES"}}
                                   :timestamp_ex {:raw {:type_name   "TIMESTAMP"
                                                        :column_name "timestamp_ex"
-                                                       :is_nullable "YES"}}}}
+                                                       :is_nullable "YES"
+                                                       :column_def  "CURRENT_TIMESTAMP"}}}}
        :child_records  {:columns {:id    {:raw {:type_name   "INT"
                                                 :column_name "id"
                                                 :is_nullable "NO"}}
@@ -202,7 +206,7 @@
         "  id           integer NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,"
         "  varchar_ex   varchar(256) NOT NULL UNIQUE,"
         "  text_ex      text,"
-        "  timestamp_ex TIMESTAMP NULL"
+        "  timestamp_ex TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP"
         ")")
    (str "CREATE TABLE child_records ("
         "  id    integer PRIMARY KEY NOT NULL UNIQUE,"
@@ -237,7 +241,8 @@
                                                     :is_nullable "YES"}}
                                :timestamp_ex {:raw {:type_name   "TIMESTAMP"
                                                     :column_name "timestamp_ex"
-                                                    :is_nullable "YES"}}}}
+                                                    :is_nullable "YES"
+                                                    :column_def  "CURRENT_TIMESTAMP"}}}}
     :child_records  {:columns {:id    {:raw {:type_name   "INTEGER"
                                              :column_name "id"
                                              :is_nullable "NO"}}
@@ -263,7 +268,7 @@
                         "  id           integer NOT NULL IDENTITY PRIMARY KEY,"
                         "  varchar_ex   varchar(256) NOT NULL,"
                         "  text_ex      text,"
-                        "  timestamp_ex TIMESTAMP NULL,"
+                        "  timestamp_ex TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,"
                         "  UNIQUE(id),"
                         "  UNIQUE(varchar_ex)"
                         ")")
@@ -304,7 +309,8 @@
                                      :nullable?   true
                                      :raw         {:type_name   "TIMESTAMP"
                                                    :column_name "TIMESTAMP_EX"
-                                                   :is_nullable "YES"}}}}
+                                                   :is_nullable "YES"
+                                                   :column_def  "CURRENT_TIMESTAMP"}}}}
 
            :CHILD_RECORDS
            {:columns {:ID    {:column-type  :integer
@@ -335,7 +341,7 @@
                         "  id           integer IDENTITY PRIMARY KEY,"
                         "  varchar_ex   varchar(256) NOT NULL UNIQUE,"
                         "  text_ex      clob,"
-                        "  timestamp_ex TIMESTAMP NULL"
+                        "  timestamp_ex TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP"
                         ")")
                    (str "CREATE TABLE child_records ("
                         "  id    integer PRIMARY KEY NOT NULL,"
@@ -373,7 +379,8 @@
                                                   :nullable?   true
                                                   :raw         {:type_name   "TIMESTAMP"
                                                                 :column_name "TIMESTAMP_EX"
-                                                                :is_nullable "YES"}}}}
+                                                                :is_nullable "YES"
+                                                                :column_def  "CURRENT_TIMESTAMP"}}}}
         :CHILD_RECORDS  {:columns {:ID    {:column-type  :integer
                                            :primary-key? true
                                            :unique?      true
