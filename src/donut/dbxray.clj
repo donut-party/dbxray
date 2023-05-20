@@ -129,7 +129,7 @@
   (let [fks (->> (get-foreign-keys dbmd table-name) (group-by :fkcolumn_name))
         pks (->> (get-primary-keys dbmd table-name) (group-by :column_name))
         ixs (->> (get-index-info dbmd table-name)   (group-by :column_name))]
-    (reduce (fn [cols-map {:keys [column_name type_name] :as col}]
+    (reduce (fn [cols-map {:keys [column_name type_name column_def] :as col}]
               (let [raw-column     (assoc col :indexes (get ixs column_name))
                     fk-ref         (some->> (get fks column_name)
                                             first
@@ -138,7 +138,6 @@
                     nullable?      ((:nullable? predicates) raw-column)
                     unique?        ((:unique? predicates) raw-column)
                     autoincrement? ((:autoincrement? predicates) raw-column)
-                    default        (:column_def raw-column)
                     primary-key?   (get pks column_name)]
                 (assoc cols-map
                        (keyword column_name)
@@ -148,7 +147,7 @@
                          primary-key?   (assoc :primary-key? true)
                          unique?        (assoc :unique? true)
                          autoincrement? (assoc :autoincrement? true)
-                         default        (assoc :default default)
+                         column_def     (assoc :default column_def)
                          fk-ref         (assoc :refers-to fk-ref)))))
             {}
             table-cols)))
