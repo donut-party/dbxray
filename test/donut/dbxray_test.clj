@@ -41,14 +41,16 @@
          (testing (str "db: " test-db#)
            ~@body)))))
 
-;; Copied verbatim from https://gist.github.com/danielpcox/c70a8aa2c36766200a95
-(defn deep-merge [v & vs]
-  (letfn [(rec-merge [v1 v2]
-            (if (and (map? v1) (map? v2))
-              (merge-with deep-merge v1 v2)
-              v2))]
-    (when (some identity vs)
-      (reduce #(rec-merge %1 %2) v vs))))
+;; Copied verbatim from the defunct clojure-contrib (http://bit.ly/deep-merge-with)
+(defn deep-merge-with [f & maps]
+  (apply
+   (fn m [& maps]
+     (if (every? map? maps)
+       (apply merge-with m maps)
+       (apply f maps)))
+   maps))
+
+(def deep-merge (partial deep-merge-with merge))
 
 (def typical-core-result
   "Most vendors return something that looks like this"
@@ -102,7 +104,7 @@
                         "  id           serial NOT NULL PRIMARY KEY UNIQUE,"
                         "  varchar_ex   varchar(256) NOT NULL UNIQUE,"
                         "  text_ex      text,"
-                        "  timestamp_ex TIMESTAMP NULL DEFAULT now()"
+                        "  timestamp_ex TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP"
                         ")")
                    (str "CREATE TABLE child_records ("
                         "  id    integer PRIMARY KEY NOT NULL UNIQUE,"
@@ -128,11 +130,10 @@
                                           :text_ex      {:raw {:type_name   "text"
                                                                :column_name "text_ex"
                                                                :is_nullable "YES"}}
-                                          :timestamp_ex {:default    "now()"
-                                                         :raw        {:type_name   "timestamp"
+                                          :timestamp_ex {:raw        {:type_name   "timestamp"
                                                                       :column_name "timestamp_ex"
                                                                       :is_nullable "YES"
-                                                                      :column_def  "now()"}}}}
+                                                                      :column_def  "CURRENT_TIMESTAMP"}}}}
                :child_records  {:columns {:id    {:raw {:type_name   "int4"
                                                         :column_name "id"
                                                         :is_nullable "NO"}}
