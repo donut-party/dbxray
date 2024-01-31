@@ -8,7 +8,9 @@
    :clob       'string?
    :text       'string?
    :varchar    'string?
-   :timestamp  'inst?})
+   :string     'string?
+   :timestamp  'inst?
+   :date       'inst?})
 
 (defn- table-spec-name
   [table-name]

@@ -9,7 +9,9 @@
    :clob       's/Str
    :text       's/Str
    :varchar    's/Str
-   :timestamp  's/Inst})
+   :string     's/Str
+   :timestamp  's/Inst
+   :date       's/Inst})
 
 (defn- table-spec-name
   [table-name]

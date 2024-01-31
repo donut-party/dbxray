@@ -10,11 +10,15 @@
    [next.jdbc.datafy :as njdf]
    [next.jdbc.result-set :as njrs]
    [weavejester.dependency :as dep]
-   [clojure.set :as set]))
+   [clojure.set :as set])
+  (:import (java.util.regex Pattern)))
 
 (def default-adapter
   {:schema-pattern nil
-   :column-types   {#"int" :integer}
+   :column-types   {#"int"      :integer
+                    #"varchar"  :string
+                    #"date"     :date
+                    #"datetime" :datetime}
    :predicates     {:nullable?      (fn [{:keys [is_nullable] :as _raw}]
                                       (= "YES" is_nullable))
                     :unique?        (fn [{:keys [indexes] :as _raw}]
@@ -29,15 +33,20 @@
 (defmethod adapter* :postgresql
   [_]
   {:schema-pattern "public"
-   :column-types   {#"serial" :integer}})
+   :column-types   {#"serial" :integer
+                    #"date"   :date}})
+
+
+(defmethod adapter* :oracle
+  [_]
+  {:column-types {#"number"  :integer}})
 
 (defmethod adapter* :sqlite
   [_]
-  {:predicates   {:unique? (fn [{:keys [indexes] :as _raw}]
-                             (->> indexes
-                                  (filter #(= 0 (:non_unique %)))
-                                  seq))}
-   :column-types {#"varchar" :varchar}})
+  {:predicates {:unique? (fn [{:keys [indexes] :as _raw}]
+                           (->> indexes
+                                (filter #(= 0 (:non_unique %)))
+                                seq))}})
 
 (defmethod adapter* :default
   [_]
@@ -182,14 +191,47 @@
     (into (unconnected-tables table-xray connected-tables)
           connected-tables)))
 
+(defn- table-filter-regex
+  [table-filter]
+  (-> (if (keyword? table-filter)
+        (name table-filter)
+        table-filter)
+      str
+      (Pattern/compile Pattern/CASE_INSENSITIVE)))
+
+(defn- filter-tables
+  [table-filter tables]
+  (cond
+    (nil? table-filter)
+    tables
+
+    (fn? table-filter)
+    (table-filter tables)
+
+    ;; make it a case-insensitive match
+    (or (instance? java.util.regex.Pattern table-filter)
+        (string? table-filter)
+        (keyword? table-filter))
+    (filter #(re-matches (table-filter-regex table-filter) (:table_name %))
+            tables)
+
+    (sequential? table-filter)
+    (let [table-set (into #{} table-filter)]
+      (filter (comp table-set :table_name) tables))
+
+    :else
+    (throw (ex-info "Don't know how to filter with given table-filter" {:table-filter table-filter}))))
+
 (defn xray
   "Given a JDBC connection, produce metadata for a database. Includes raw metadata
   for columns.
 
   use `:include-raw? true` in `adapter-opts` to include raw metadata"
-  [conn & [adapter-opts]]
-  (let [dbmd       (prep conn adapter-opts)
-        tables     (get-tables dbmd)
+  [conn & [{:keys [table-filter :as opts]}]]
+  (let [dbmd       (prep conn opts)
+        tables     (->> dbmd
+                        get-tables
+                        (filter-tables table-filter))
         columns    (group-by :table_name (get-columns dbmd))
         table-xray (reduce (fn [xr {:keys [table_name]}]
                              (let [table-cols (get columns table_name)]
@@ -232,3 +274,9 @@
       .getCatalogs
       datafy-result-set
       ))
+
+
+(comment
+  ;; TODO pass in schema pattern
+  ;; TODO pass in table filter
+  )

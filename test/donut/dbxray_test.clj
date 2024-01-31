@@ -8,8 +8,8 @@
    (io.zonky.test.db.postgres.embedded EmbeddedPostgres)))
 
 (defonce embedded-pg (future (EmbeddedPostgres/start)))
-(def ^:dynamic *dbtype*)
-(def ^:dynamic *dbconn*)
+(def ^:dynamic *dbtype* nil)
+(def ^:dynamic *dbconn* nil)
 
 ;;---
 ;; helpers
