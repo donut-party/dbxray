@@ -16,7 +16,7 @@
 (def default-adapter
   {:schema-pattern nil
    :column-types   {#"int"      :integer
-                    #"varchar"  :string
+                    #"varchar"  :varchar
                     #"date"     :date
                     #"datetime" :datetime}
    :predicates     {:nullable?      (fn [{:keys [is_nullable] :as _raw}]
