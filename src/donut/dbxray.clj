@@ -227,7 +227,7 @@
   for columns.
 
   use `:include-raw? true` in `adapter-opts` to include raw metadata"
-  [conn & [{:keys [table-filter :as opts]}]]
+  [conn & [{:keys [table-filter] :as opts}]]
   (let [dbmd       (prep conn opts)
         tables     (->> dbmd
                         get-tables
