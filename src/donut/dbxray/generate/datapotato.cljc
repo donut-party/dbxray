@@ -1,6 +1,7 @@
 (ns donut.dbxray.generate.datapotato
   (:require
    [clojure.string :as string]
+   [donut.dbxray.generate.format :as fmt]
    [flatland.ordered.map :as omap]))
 
 (defn- table-prefix
@@ -9,34 +10,33 @@
         initials (map first words)]
     {:prefix (keyword (apply str initials))}))
 
-(defn- full-column-name
-  [table-name col-name]
-  (let [table (name table-name)]
-    (keyword (str table "/" (name col-name)))))
-
-
 (defn- table-relations
-  [table-name columns]
+  [table-name columns fmt-column-name]
   (some->> (not-empty
             (into {}
                   (keep (fn [[column-name column-data]]
                           (when-let [refers-to (:refers-to column-data)]
-                            (let [relations-key (full-column-name table-name column-name)
+                            (let [relations-key (fmt-column-name table-name column-name)
                                   [ref-table ref-col] refers-to]
-                              {relations-key [ref-table (full-column-name ref-table ref-col)]})))
+                              {relations-key [ref-table (fmt-column-name ref-table ref-col)]})))
                         columns)))
            (assoc {} :relations)))
 
 (defn- table-potato-schema
-  [table-name table-data]
+  [table-name table-data fmt-table-name fmt-column-name]
   (let [{:keys [columns]} table-data
         prefix (table-prefix table-name)]
-    {table-name (merge prefix
-                       (table-relations table-name columns))}))
+    {(fmt-table-name table-name) (merge prefix
+                                        (table-relations table-name columns fmt-column-name))}))
 
 (defn generate
-  [{:keys [tables table-order]}]
+  [{:keys [tables table-order]} & [{:keys [fmt-table-name fmt-column-name]
+                                    :or   {fmt-table-name  identity
+                                           fmt-column-name fmt/->full-column-schema-name}}]]
   (reduce (fn [generated table-name]
-            (merge generated (table-potato-schema table-name (table-name tables))))
+            (merge generated (table-potato-schema table-name
+                                                  (table-name tables)
+                                                  fmt-table-name
+                                                  fmt-column-name)))
           (omap/ordered-map)
           table-order))

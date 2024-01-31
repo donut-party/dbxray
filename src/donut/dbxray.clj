@@ -1,5 +1,6 @@
 (ns donut.dbxray
   (:require
+   [camel-snake-kebab.core :as csk]
    [clojure.datafy :as df]
    [clojure.string :as str]
    [donut.dbxray.generate.spec :as clojure-spec]
@@ -33,13 +34,12 @@
 (defmethod adapter* :postgresql
   [_]
   {:schema-pattern "public"
-   :column-types   {#"serial" :integer
-                    #"date"   :date}})
+   :column-types   {#"serial" :integer}})
 
 
 (defmethod adapter* :oracle
   [_]
-  {:column-types {#"number"  :integer}})
+  {:column-types {#"number" :integer}})
 
 (defmethod adapter* :sqlite
   [_]
@@ -199,6 +199,10 @@
       str
       (Pattern/compile Pattern/CASE_INSENSITIVE)))
 
+(defn- regex?
+  [x]
+  (instance? Pattern x))
+
 (defn- filter-tables
   [table-filter tables]
   (cond
@@ -209,9 +213,7 @@
     (table-filter tables)
 
     ;; make it a case-insensitive match
-    (or (instance? java.util.regex.Pattern table-filter)
-        (string? table-filter)
-        (keyword? table-filter))
+    ((some-fn regex? string? keyword?) table-filter)
     (filter #(re-matches (table-filter-regex table-filter) (:table_name %))
             tables)
 
@@ -222,11 +224,17 @@
     :else
     (throw (ex-info "Don't know how to filter with given table-filter" {:table-filter table-filter}))))
 
+(def XrayOpts
+  [:map
+   [:table-filter
+    [:or set? string? fn? regex?]]
+   [:schema-pattern string?]])
+
 (defn xray
   "Given a JDBC connection, produce metadata for a database. Includes raw metadata
   for columns.
 
-  use `:include-raw? true` in `adapter-opts` to include raw metadata"
+  use `:include-raw? true` in `opts` to include raw metadata"
   [conn & [{:keys [table-filter] :as opts}]]
   (let [dbmd       (prep conn opts)
         tables     (->> dbmd
@@ -277,6 +285,7 @@
 
 
 (comment
-  ;; TODO pass in schema pattern
   ;; TODO pass in table filter
+  ;; TODO sort tables
+  ;; TODO zprint
   )

@@ -1,7 +1,6 @@
 (ns donut.dbxray.generate.plumatic-schema
   (:require
-   [camel-snake-kebab.core :as csk]
-   [inflections.core :as inflections]))
+   [donut.dbxray.generate.format :as fmt]))
 
 (def column-types
   {:integer    's/Int
@@ -13,25 +12,15 @@
    :timestamp  's/Inst
    :date       's/Inst})
 
-(defn- table-spec-name
-  [table-name]
-  (-> table-name
-      inflections/singular
-      csk/->PascalCaseSymbol))
-
-(defn- column-spec-name
-  [table-name column-name]
-  (keyword (name table-name) (name column-name)))
-
 (defn- column-spec
-  [xray table-name column-name]
+  [xray table-name column-name fmt-column-name]
   (let [{:keys [column-type primary-key? nullable? refers-to]} (get-in xray [table-name :columns column-name])]
-    [(cond->> (column-spec-name table-name column-name)
+    [(cond->> (fmt-column-name table-name column-name)
        (not nullable?) (list 's/required-key))
 
      (cond
        refers-to
-       (last (column-spec xray (first refers-to) (second refers-to)))
+       (last (column-spec xray (first refers-to) (second refers-to) fmt-column-name))
 
        (and (= :integer column-type) primary-key?)
        (:integer-pk column-types)
@@ -40,12 +29,14 @@
        (column-type column-types [:TODO/column-type-not-recognized column-type]))]))
 
 (defn generate
-  [{:keys [tables table-order]}]
+  [{:keys [tables table-order]} & [{:keys [fmt-table-name fmt-column-name]
+                                    :or   {fmt-table-name  fmt/->var-name
+                                           fmt-column-name fmt/->full-column-schema-name}}]]
   (->> table-order
        (mapv (fn [table-name]
                (let [{:keys [column-order]} (table-name tables)]
                  (list 's/defschema
-                       (table-spec-name table-name)
+                       (fmt-table-name table-name)
                        (->> column-order
-                            (map #(column-spec tables table-name %))
+                            (map #(column-spec tables table-name % fmt-column-name))
                             (into {}))))))))
