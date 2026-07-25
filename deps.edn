@@ -5,6 +5,11 @@
          org.flatland/ordered                {:mvn/version "1.15.10"}
          weavejester/dependency              {:mvn/version "0.2.1"}}
 
+ :donut/lib {:name           party.donut/dbxray
+             :description    "database metadata for generating specs/schemas"
+             :github         "donut-party/dbxray"
+             :version-prefix "0.0"}
+
  :aliases
  {:test
   {:extra-paths ["test"]
@@ -23,6 +28,6 @@
    :exec-fn cognitect.test-runner.api/test}
 
   :build
-  {:deps       {io.github.seancorfield/build-clj
-                {:git/tag "v0.6.6" :git/sha "171d5f1"}}
-   :ns-default build}}}
+  {:deps       {io.github.donut-party/framework-build
+                {:git/sha "912e0b0ffc914cf1b5824650268307062d92e40c"}}
+   :ns-default donut.build}}}
